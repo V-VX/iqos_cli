@@ -29,15 +29,6 @@ pub async fn register_command(console: &IQOSConsole) {
     })).await;
 }
 
-/// Register the brightness command using the registry directly
-pub fn register(commands: &mut CommandRegistry) {
-    commands.insert("brightness".to_string(), Box::new(|iqos, args| {
-        Box::pin(async move {
-            execute_command(iqos, args).await
-        })
-    }));
-}
-
 /// Execute the brightness command
 async fn execute_command(iqos: Arc<Mutex<IqosBle>>, args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;

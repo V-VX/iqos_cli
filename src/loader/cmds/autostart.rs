@@ -28,7 +28,7 @@ pub async fn register_command(console: &IQOSConsole) {
     })).await;
 }
 
-pub async fn execute_command(iqos: Arc<Mutex<IqosBle>>, args: Vec<String>) -> Result<()> {
+async fn execute_command(iqos: Arc<Mutex<IqosBle>>, args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
     if let Some(arg) = args.get(1) {
         match arg.to_lowercase() {
