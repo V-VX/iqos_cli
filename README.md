@@ -18,12 +18,11 @@
 
 - [Overview](#-overview)
 - [Features](#-features)
-- [Supported Devices](#-supported-devices)
+- [Device Compatibility](#-device-comatibility)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
 - [Commands Reference](#-commands-reference)
-- [Device Compatibility](#-device-compatibility)
 - [Examples](#-examples)
 - [Troubleshooting](#-troubleshooting)
 - [Development](#-development)
@@ -50,17 +49,6 @@ Whether you're looking to customize vibration patterns, adjust brightness levels
 - 🔒 **Device Locking** - Secure your device with lock/unlock functionality
 - 📊 **Device Information** - View detailed device info (model, serial, firmware, etc.)
 - 🛡️ **Type-Safe API** - Leverages Rust's type system for safe BLE operations
-
-## 🔌 Tested Devices
-
-| Feature | **IQOS ILUMA i** | **IQOS ILUMA i One** | **IQOS ILUMA i Prime** | **IQOS ILUMA** | **IQOS ILUMA ONE** | IQOS ILUMA Prime |
-|--------|--------|----------|------|-----|-----|-----|
-| Vibration | ✅ | ✅ | ❓ | ✅ | ❓ | ❓|
-| Brightness control | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Smart Gesture | ✅ |  ✅ | ❓ | ✅ | ❓ | ❓ |
-| Auto Start | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Flex Puff | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Flex Battery | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
 
 ## 📋 Prerequisites
 
@@ -137,7 +125,7 @@ cargo install --path .
    iqos> brightness high
 
    Brightness Level: high
-   
+
    iqos>
    ```
 
@@ -399,97 +387,3 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ⭐ Star this repo if you find it useful!
 
 </div>
-
-### FlexPuff (ILUMA)
-- `flexpuff status` - Show current FlexPuff status
-- `flexpuff enable` - Enable FlexPuff mode
-- `flexpuff disable` - Disable FlexPuff mode
-
-### FlexBattery (ILUMA i)
-- `flexbattery` - Show current battery mode
-- `flexbattery performance` - Set performance mode
-- `flexbattery eco` - Set eco mode
-- `flexbattery pause [on|off]` - Control pause mode
-
-### Vibration Settings
-Configure vibration patterns for different events:
-
-```bash
-# Basic usage
-vibration [option] [on|off] [option] [on|off] ...
-
-# Examples
-vibration heating on puffend on
-vibration charge off heating on starting on terminated on
-vibration charge on heating on puffend on terminated off
-```
-
-**Available options:**
-- `charge` - Charge start vibration (ILUMA only)
-- `heating` - Heating start vibration
-- `starting` - Puff start vibration
-- `terminated` - Session termination vibration
-- `puffend` - Puff end vibration
-
-## Device Compatibility
-
-| Feature | IQOS ONE | ILUMA | ILUMA i |
-|---------|----------|-------|---------|
-| Basic Controls | ✅ | ✅ | ✅ |
-| Battery Status | ✅ | ✅ | ✅ |
-| Vibration Settings | ✅ | ✅ | ✅ |
-| Brightness Control | ❌ | ✅ | ✅ |
-| Smart Gesture | ❌ | ✅ | ✅ |
-| FlexPuff | ❌ | ✅ | ✅ |
-| AutoStart | ❌ | ✅ | ✅ |
-| FlexBattery | ❌ | ❌ | ✅ |
-| Charge Vibration | ❌ | ✅ | ✅ |
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-[Add your license information here]
-
-## Troubleshooting
-
-### Device Not Found
-- Ensure your IQOS device is powered on
-- Check that Bluetooth is enabled on your system
-- Make sure the device is not connected to another application
-
-### Connection Issues
-- Try restarting the IQOS device
-- Ensure you're within Bluetooth range
-- Check system Bluetooth permissions
-
-### Command Errors
-- Verify your device model supports the feature
-- Ensure the device is properly connected
-- Check that the device is not in use (heating, etc.)
-
-## Examples
-
-### Configure Vibrations for ILUMA
-```bash
-iqos> vibration charge on heating on puffend off terminated on
-Vibration settings updated
-```
-
-### Set Performance Mode on ILUMA i
-```bash
-iqos> flexbattery performance
-Flexbattery mode updated.
-```
-
-### Enable Smart Gesture
-```bash
-iqos> smartgesture enable
-Smart Gesture enabled
-```
