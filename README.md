@@ -56,7 +56,7 @@ Whether you're looking to customize vibration patterns, adjust brightness levels
 |--------|--------|----------|------|-----|-----|-----|
 | Battery Status | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
 | Device Info | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Device Lock/Unlock | ✅ | ✅ | ❓ ✅ | ❓ | ❓ | 
+| Device Lock/Unlock | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ | 
 | Vibration Settings | ✅ | ✅ | ❓ | ✅ | ❓ | ❓|
 | Brightness control | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
 | Smart Gesture | ✅ |  ✅ | ❓ | ✅ | ❓ | ❓ |
