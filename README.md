@@ -50,6 +50,20 @@ Whether you're looking to customize vibration patterns, adjust brightness levels
 - 📊 **Device Information** - View detailed device info (model, serial, firmware, etc.)
 - 🛡️ **Type-Safe API** - Leverages Rust's type system for safe BLE operations
 
+## 🔌 Device Compatibility
+
+| Feature | **IQOS ILUMA i** | **IQOS ILUMA i One** | **IQOS ILUMA i Prime** | **IQOS ILUMA** | **IQOS ILUMA ONE** | IQOS ILUMA Prime |
+|--------|--------|----------|------|-----|-----|-----|
+| Battery Status | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
+| Device Info | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
+| Device Lock/Unlock | ✅ | ✅ | ❓ ✅ | ❓ | ❓ | 
+| Vibration Settings | ✅ | ✅ | ❓ | ✅ | ❓ | ❓|
+| Brightness control | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
+| Smart Gesture | ✅ |  ✅ | ❓ | ✅ | ❓ | ❓ |
+| Auto Start | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
+| Flex Puff | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
+| Flex Battery | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
+
 ## 📋 Prerequisites
 
 Before installing IQOS CLI, ensure you have the following:
@@ -158,20 +172,6 @@ cargo install --path .
 | `flexbattery <setting>` | Configure FlexBattery settings | `flexbattery on` | ILUMA, ILUMA i |
 | `smartgesture <on\|off>` | Enable/disable smart gestures | `smartgesture on` | ILUMA i |
 | `autostart <on\|off>` | Configure automatic heating start | `autostart on` | ILUMA, ILUMA i |
-
-## 🎮 Device Compatibility
-
-| Feature | ILUMA | ILUMA i | ILUMA ONE |
-|---------|-------|---------|-----------|
-| Battery Status | ✅ | ✅ | ✅ |
-| Device Info | ✅ | ✅ | ✅ |
-| Lock/Unlock | ✅ | ✅ | ✅ |
-| Brightness Control | ✅ | ✅ | ✅ |
-| Vibration Settings | ✅ | ✅ | ✅ |
-| FlexBattery | ✅ | ✅ | ❌ |
-| FlexPuff | ❌ | ✅ | ❌ |
-| Smart Gesture | ❌ | ✅ | ❌ |
-| AutoStart | ✅ | ✅ | ❌ |
 
 ## 💡 Examples
 
