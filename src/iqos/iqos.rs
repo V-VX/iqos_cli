@@ -6,6 +6,7 @@ use super::iluma::IlumaSpecific;
 use super::{IqosIluma, COMMAND_CHECKSUM_XOR};
 use super::brightness::{BrightnessLevel, LOAD_BRIGHTNESS_SIGNAL, BRIGHTNESS_HIGH_SIGNAL, BRIGHTNESS_LOW_SIGNAL};
 use super::vibration::{VibrationBehavior, VibrationSettings, LOAD_VIBRATION_SETTINGS_SIGNAL};
+use super::telemetry::{LOAD_TELEMETRY_SIGNAL, Telemetry};
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 
@@ -219,6 +220,7 @@ impl Iqos for IqosBle {
         self.send_confirm().await?;
         Ok(())
     }
+    
     async fn load_brightness(&self) -> Result<BrightnessLevel> {
         self.send_command(LOAD_BRIGHTNESS_SIGNAL.to_vec()).await?;
         let mut stream = self.notifications().await?;
@@ -282,6 +284,24 @@ impl Iqos for IqosBle {
         }
 
         Ok(())
+    }
+
+    async fn telemetry(&self) -> Result<()> {
+        self.send_command(LOAD_TELEMETRY_SIGNAL.to_vec()).await?;
+        let mut stream = self.notifications().await?;
+
+        if let Some(notification) = stream.next().await {
+            let hex_string = notification.value.iter()
+                .map(|byte| format!("{:02X}", byte))
+                .collect::<Vec<String>>()
+                .join(" ");
+            println!("Telemetry Data: {}", hex_string);
+            Telemetry::from_bytes(&notification.value);
+            return Ok(());
+        } else {
+            Err(IQOSError::ConfigurationError("No telemetry data received".to_string()))
+        }
+
     }
 }
 

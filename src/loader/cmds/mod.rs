@@ -5,5 +5,6 @@ pub mod brightness;
 pub mod vibration;
 pub mod autostart;
 pub mod smartgesture;
+pub mod telemetry;
 
 // Add more command modules here as needed

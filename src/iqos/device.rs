@@ -26,6 +26,8 @@ pub trait Iqos {
     async fn load_vibration_settings(&self) -> Result<VibrationSettings>;
 
     async fn update_vibration_settings(&self, settings: VibrationSettings) -> Result<()>;
+
+    async fn telemetry(&self) -> Result<()>;
 }
 
 pub trait IqosIluma: Send + Sync {
