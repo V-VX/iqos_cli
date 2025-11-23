@@ -7,6 +7,8 @@ use super::{IqosIluma, COMMAND_CHECKSUM_XOR};
 use super::brightness::{BrightnessLevel, LOAD_BRIGHTNESS_SIGNAL, BRIGHTNESS_HIGH_SIGNAL, BRIGHTNESS_LOW_SIGNAL};
 use super::vibration::{VibrationBehavior, VibrationSettings, LOAD_VIBRATION_SETTINGS_SIGNAL};
 use super::telemetry::{LOAD_TELEMETRY_SIGNAL, Telemetry};
+use crate::iqos::firmware_version::{self, FirmwareVersion};
+
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
 
@@ -75,6 +77,7 @@ pub struct IqosBle {
     scp_control_characteristic: Characteristic,
     model: IQOSModel,
     product_number: String,
+    firmware_version: FirmwareVersion,
     iluma: Option<IlumaSpecific>,
 }
 
@@ -88,6 +91,7 @@ impl IqosBle {
         battery_characteristic: Characteristic,
         scp_control_characteristic: Characteristic,
         product_number: String,
+        firmware_version: FirmwareVersion,
         iluma: Option<IlumaSpecific>,
     ) -> Self {
         let model = IQOSModel::from_peripheral(&peripheral).await;
@@ -102,6 +106,7 @@ impl IqosBle {
             scp_control_characteristic,
             model,
             product_number,
+            firmware_version,
             iluma,
         }
     }
@@ -310,11 +315,12 @@ impl std::fmt::Display for IqosBle {
         if self.is_iluma_or_higher() {
             return write!(
                 f,
-                "Model: {}\nModel Number: {}\nSerial Number: {}\nManufacturer Name: {}\n\nStick:\n\tProduct Number: {}\n\tSoftware Revision: {}\nHolder:\n\tHolder Product Number: {}",
+                "Model: {}\nModel Number: {}\nSerial Number: {}\nManufacturer Name: {}\nFirmware version: {}\n\nStick:\n\tProduct Number: {}\n\tSoftware Revision: {}\nHolder:\n\tHolder Product Number: {}",
                 self.model,
                 self.modelnumber,
                 self.serialnumber,
                 self.manufacturername,
+                self.firmware_version,
                 self.product_number,
                 self.softwarerevision,
                 self.iluma.as_ref().unwrap().holder_product_number(),
@@ -322,12 +328,13 @@ impl std::fmt::Display for IqosBle {
         }
         write!(
             f,
-            "Model: {}\nModel Number: {}\nSerial Number: {}\nSoftware Revision: {}\nManufacturer Name: {}\nProduct Number: {}",
+            "Model: {}\nModel Number: {}\nSerial Number: {}\nSoftware Revision: {}\nManufacturer Name: {}\nFirmware version: {}\nProduct Number: {}",
             self.model,
             self.modelnumber,
             self.serialnumber,
             self.softwarerevision,
             self.manufacturername,
+            self.firmware_version,
             self.product_number,
         )
     }

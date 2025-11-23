@@ -9,6 +9,7 @@ pub mod brightness;
 pub mod vibration;
 pub mod flexpuff;
 pub mod telemetry;
+pub mod firmware_version;
 
 use uuid::{uuid, Uuid};
 
@@ -22,6 +23,7 @@ pub use brightness::BrightnessLevel;
 pub use vibration::VibrationSettings;
 pub use flexpuff::Flexpuff;
 pub use telemetry::Telemetry;
+pub use firmware_version::FirmwareVersion;
 
 // Service UUIDs
 pub const DEVICE_INFO_SERVICE_UUID: Uuid = uuid!("0000180a-0000-1000-8000-00805f9b34fb");

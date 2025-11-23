@@ -1,3 +1,7 @@
+use std::collections::BTreeSet;
+
+use crate::iqos::FirmwareVersion;
+
 use super::iluma::IlumaSpecific;
 use super::iqos::{IQOSModel, IqosBle};
 use super::error::{IQOSError, Result};
@@ -5,9 +9,9 @@ use super::device::{Iqos, IqosIluma};
 use super::{
     BATTERY_CHARACTERISTIC_UUID, CORE_SERVICE_UUID, DEVICE_INFO_SERVICE_UUID, MANUFACTURER_NAME_CHAR_UUID, MODEL_NUMBER_CHAR_UUID, SERIAL_NUMBER_CHAR_UUID, SOFTWARE_REVISION_CHAR_UUID, SCP_CONTROL_CHARACTERISTIC_UUID, PRODUCT_NUM_SIGNAL, HOLDER_PRODUCT_NUM_SIGNAL
 };
+use super::firmware_version::LOAD_FIRMWARE_VERSION_SIGNAL;
 use btleplug::platform::Peripheral;
 use btleplug::api::{Characteristic, Peripheral as _, Service};
-use std::collections::BTreeSet;
 use uuid::Uuid;
 use futures::StreamExt;
 
@@ -20,6 +24,7 @@ pub struct IQOSBuilder {
     battery_characteristic: Option<Characteristic>,
     scp_control_characteristic: Option<Characteristic>,
     product_number: Option<String>,
+    firmware_version: Option<FirmwareVersion>,
     iluma: Option<IlumaSpecific>,
 }
 
@@ -34,6 +39,7 @@ impl IQOSBuilder {
             battery_characteristic: None,
             scp_control_characteristic: None,
             product_number: None,
+            firmware_version: None,
             iluma: None,
         }
     }
@@ -48,6 +54,7 @@ impl IQOSBuilder {
 
         self.load_product_num().await?;
         self.load_holder_product_num().await?;
+        self.load_firmware_version().await?;
         
         Ok(())
     }
@@ -159,6 +166,23 @@ impl IQOSBuilder {
         Ok(())
     }
 
+    async fn load_firmware_version(&mut self) -> Result<()> {
+        let peripheral = self.peripheral
+            .as_ref()
+            .ok_or(IQOSError::ConfigurationError("Peripheral is required".to_string()))?;
+
+        self.write(LOAD_FIRMWARE_VERSION_SIGNAL.to_vec()).await?;
+        let mut stream = peripheral.notifications().await?;
+
+        if let Some(notification) = stream.next().await {
+            if let Ok(firmware_version) = FirmwareVersion::from_bytes(&notification.value) {
+                self.firmware_version = Some(firmware_version);
+            }
+        }
+        
+        Ok(())
+    }
+
     async fn load_device_info(&mut self) -> Result<()> {
         let peripheral = self.peripheral
             .as_mut()
@@ -235,6 +259,7 @@ impl IQOSBuilder {
             self.battery_characteristic.ok_or(IQOSError::ConfigurationError("Battery characteristic is required".to_string()))?,
             self.scp_control_characteristic.ok_or(IQOSError::ConfigurationError("SCP Control characteristic is required".to_string()))?,
             self.product_number.unwrap_or_else(|| "Unknown".to_string()),
+            self.firmware_version.ok_or(IQOSError::ConfigurationError("Firmware version is required".to_string()))?,
             self.iluma,
         ).await;
 
