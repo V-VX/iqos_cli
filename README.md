@@ -154,14 +154,13 @@ cargo install --path .
 | `battery` | Display current battery status | `battery` |
 | `lock` | Lock the device | `lock` |
 | `unlock` | Unlock the device | `unlock` |
-| `reset` | Reset device to factory settings | `reset` |
 | `exit` / `quit` | Exit the CLI | `exit` |
 
 ### Display & Feedback
 
 | Command | Description | Example | Compatibility |
 |---------|-------------|---------|---------------|
-| `brightness <level>` | Set LED brightness (1-10) | `brightness 7` | ILUMA, ILUMA i |
+| `brightness <low/high>` | Set LED brightness (low/high) | `brightness high` | ILUMA, ILUMA i |
 | `vibration` | Configure vibration patterns | `vibration` | All models |
 
 ### Advanced Features
@@ -178,15 +177,15 @@ cargo install --path .
 ### Check Battery Status
 ```bash
 iqos> battery
+
 Battery Level: 85%
-Charging: No
-Status: Ready
+
 ```
 
 ### Adjust Brightness
 ```bash
-iqos> brightness 8
-Brightness set to level 8
+iqos> brightness high
+Set to Brightness high
 ```
 
 ### Configure Vibration Pattern
@@ -197,7 +196,6 @@ Select vibration event:
 2. Ready to Use
 3. Battery Low
 Selection: 1
-Enter vibration intensity (0-100): 75
 Vibration pattern updated successfully
 ```
 
