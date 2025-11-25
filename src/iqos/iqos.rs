@@ -32,7 +32,10 @@ pub const UNLOCK_SIGNALS: [&[u8]; 2] = [
 pub enum IQOSModel {
     One,
     Iluma,
-    IlumaI
+    IlumaPrime,
+    IOne,
+    IlumaI,
+    IlumaIPrime,
 }
 
 impl std::fmt::Display for IQOSModel {
@@ -40,7 +43,10 @@ impl std::fmt::Display for IQOSModel {
         match self {
             IQOSModel::One => write!(f, "ONE"),
             IQOSModel::Iluma => write!(f, "ILUMA"),
+            IQOSModel::IlumaPrime => write!(f, "ILUMA Prime"),
+            IQOSModel::IOne => write!(f, "i One"),
             IQOSModel::IlumaI => write!(f, "ILUMA i"),
+            IQOSModel::IlumaIPrime => write!(f, "ILUMA i Prime"),
         }
     }
 }
