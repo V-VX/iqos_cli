@@ -3,6 +3,7 @@ use btleplug::api::{
     Central, CentralEvent, Manager as _, Peripheral as _, ScanFilter,
 };
 use btleplug::platform::{Adapter, Manager, PeripheralId};
+use colored::{ColoredString, Colorize};
 use futures::stream::StreamExt;
 use std::error::Error;
 
@@ -17,10 +18,22 @@ async fn get_central(manager: &Manager) -> Adapter {
     adapters.into_iter().nth(0).unwrap()
 }
 
+const IQOS_CLI_ASCII_ART: &str = r"
+
+ ██╗  ██████╗   ██████╗  ███████╗      ██████╗ ██╗      ██╗
+ ██║ ██╔═══██╗ ██╔═══██╗ ██╔════╝     ██╔════╝ ██║      ██║
+ ██║ ██║   ██║ ██║   ██║ ███████╗     ██║      ██║      ██║
+ ██║ ██║▄▄ ██║ ██║   ██║ ╚════██║     ██║      ██║      ██║
+ ██║ ╚██████╔╝ ╚██████╔╝ ███████║     ╚██████╗ ███████╗ ██║
+ ╚═╝  ╚══▀▀═╝   ╚═════╝  ╚══════╝      ╚═════╝ ╚══════╝ ╚═╝
+
+";
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let mut iqos_builder: iqos::IQOSBuilder;
     let manager = Manager::new().await.unwrap();
+    println!("{}", IQOS_CLI_ASCII_ART.blue());
 
     // get the first bluetooth adapter
     let central = get_central(&manager).await;
@@ -30,6 +43,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let mut events = central.events().await?;
     let mut ignore_devices: Vec<PeripheralId> = vec![];
+
+    println!("Scanning for IQOS devices...");
     // start scanning for devices
     central.start_scan(ScanFilter::default()).await?;
 
@@ -49,7 +64,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     println!("Found IQOS: {name} ({addr})");
                     
                     loop {
-                        print!("Connect to {name} ({addr})? [y/N]: ");
+                        print!("Connect to {name} ({addr})? [y/n]: ");
                         let _  = std::io::stdout().flush();
                         let mut input = String::new();
                         std::io::stdin().read_line(&mut input)?;

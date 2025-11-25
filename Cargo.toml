@@ -14,3 +14,4 @@ tokio = { version = "1.0", features = ["full"] }
 tokio-macros = { version = "0.2.0-alpha.6" }
 uuid = { version = "1.0", features = ["v4", "macro-diagnostics"] }
 thiserror = "1.0"
+colored = "3.0"
