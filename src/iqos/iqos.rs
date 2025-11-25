@@ -30,10 +30,10 @@ pub const UNLOCK_SIGNALS: [&[u8]; 2] = [
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum IQOSModel {
-    One,
+    IlumaOne,
     Iluma,
     IlumaPrime,
-    IOne,
+    IlumaIOne,
     IlumaI,
     IlumaIPrime,
 }
@@ -41,10 +41,10 @@ pub enum IQOSModel {
 impl std::fmt::Display for IQOSModel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            IQOSModel::One => write!(f, "ONE"),
+            IQOSModel::IlumaOne => write!(f, "Iluma ONE"),
             IQOSModel::Iluma => write!(f, "ILUMA"),
             IQOSModel::IlumaPrime => write!(f, "ILUMA Prime"),
-            IQOSModel::IOne => write!(f, "i One"),
+            IQOSModel::IlumaIOne => write!(f, "Iluma i One"),
             IQOSModel::IlumaI => write!(f, "ILUMA i"),
             IQOSModel::IlumaIPrime => write!(f, "ILUMA i Prime"),
         }
@@ -57,18 +57,32 @@ impl IQOSModel {
             if let Some(properties) = properties {
                 if let Some(name) = properties.local_name {
                     if name.contains("ONE") {
-                        return IQOSModel::One;
-                    }
-                    else if name.contains("ILUMA i") {
-                        return IQOSModel::IlumaI;
+                        return IQOSModel::IlumaOne;
                     }
                     else if name.contains("ILUMA") {
                         return IQOSModel::Iluma;
                     }
+                    else if name.contains("ILUMA Prime") {
+                        return IQOSModel::IlumaPrime;
+                    }
+                    else if name.contains("i ONE") {
+                        return IQOSModel::IlumaIOne;
+                    }
+                    else if name.contains("ILUMA i") {
+                        return IQOSModel::IlumaI;
+                    }
+                    else if name.contains("ILUMA i Prime") {
+                        return IQOSModel::IlumaIPrime;
+                    }
+
                 }
             }
         }
         IQOSModel::Iluma
+    }
+
+    pub fn is_iluma_one(&self) -> bool {
+        matches!(self, IQOSModel::IlumaOne | IQOSModel::IlumaIOne)
     }
 }
 
@@ -90,6 +104,7 @@ pub struct IqosBle {
 impl IqosBle {
     pub(crate) async fn new(
         peripheral: Peripheral,
+        model: IQOSModel,
         modelnumber: String,
         serialnumber: String,
         softwarerevision: String,
@@ -100,9 +115,9 @@ impl IqosBle {
         firmware_version: FirmwareVersion,
         iluma: Option<IlumaSpecific>,
     ) -> Self {
-        let model = IQOSModel::from_peripheral(&peripheral).await;
         Self {
             peripheral,
+            model,
             modelnumber,
             serialnumber,
             softwarerevision,
@@ -110,7 +125,6 @@ impl IqosBle {
             holder_battery_status: 0,
             battery_characteristic,
             scp_control_characteristic,
-            model,
             product_number,
             firmware_version,
             iluma,
@@ -321,7 +335,7 @@ impl std::fmt::Display for IqosBle {
         if self.is_iluma_or_higher() {
             return write!(
                 f,
-                "Model: {}\nModel Number: {}\nSerial Number: {}\nManufacturer Name: {}\nFirmware version: {}\n\nStick:\n\tProduct Number: {}\n\tSoftware Revision: {}\nHolder:\n\tHolder Product Number: {}",
+                "Model: {}\nModel Number: {}\nSerial Number: {}\nManufacturer Name: {}\nFirmware version: {}\n\nStick:\n\tProduct Number: {}\n\tSoftware Revision: {}\nHolder:\n\tHolder Product Number: {}\n\tHolder Firmware version: {}",
                 self.model,
                 self.modelnumber,
                 self.serialnumber,
@@ -330,6 +344,7 @@ impl std::fmt::Display for IqosBle {
                 self.product_number,
                 self.softwarerevision,
                 self.iluma.as_ref().unwrap().holder_product_number(),
+                self.iluma.as_ref().unwrap().firmware_version(),
             )
         }
         write!(

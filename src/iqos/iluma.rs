@@ -1,5 +1,6 @@
 use futures::{stream, StreamExt};
 
+use crate::iqos::FirmwareVersion;
 use crate::iqos::error::{IQOSError, Result};
 use crate::iqos::vibration::{self, VibrationSettings, LOAD_VIBRATION_SETTINGS_SIGNAL};
 
@@ -9,21 +10,29 @@ use super::vibration::{IlumaVibration, IlumaVibrationBehavior};
 use super::flexpuff::{Flexpuff, LOAD_FLEXPUFF_SIGNAL};
 use btleplug::api::{Peripheral as _, WriteType};
 
+#[derive(Default, Clone)]
 pub struct IlumaSpecific {
     holder_product_number: String,
-    firmware_version: String,
+    firmware_version: FirmwareVersion,
 }
 
 impl IlumaSpecific {
-    pub fn new(holder_product_number: String, firmware_version: String) -> Self {
-        Self {
-            holder_product_number,
-            firmware_version,
-        }
-    }
-
     pub fn holder_product_number(&self) -> &str {
         &self.holder_product_number
+    }
+
+    pub fn with_holder_product_number(mut self, new: &str) -> Self {
+        self.holder_product_number = new.to_string();
+        self
+    }
+
+    pub fn firmware_version(&self) -> &FirmwareVersion {
+        &self.firmware_version
+    }
+
+    pub fn with_firmware_version(mut self, new: FirmwareVersion) -> Self {
+        self.firmware_version = new;
+        self
     }
 }
 
@@ -79,6 +88,11 @@ impl IqosIluma for IqosBle {
         let mut stream = self.notifications().await?;
 
         if let Some(notification) = stream.next().await {
+            let hex_string = notification.value.iter()
+                .map(|byte| format!("{:02X}", byte))
+                .collect::<Vec<String>>()
+                .join(" ");
+            println!(" Vib Signal: {}", hex_string);
             if let Ok(settings) = VibrationSettings::from_bytes(&notification.value) {
                 vibration_settings.when_heating_start = settings.when_heating_start;
                 vibration_settings.when_starting_to_use = settings.when_starting_to_use;
