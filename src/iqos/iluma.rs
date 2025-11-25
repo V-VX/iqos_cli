@@ -36,15 +36,12 @@ impl IlumaSpecific {
     }
 }
 
-pub const FLEXPUFF_ENABLE_SIGNAL: [u8; 9] = [0x00, 0xd2, 0x45, 0x22, 0x03, 0x01, 0x00, 0x00, 0x0A];
-pub const FLEXPUFF_DISABLE_SIGNAL: [u8; 9] = [0x00, 0xd2, 0x45, 0x22, 0x03, 0x00, 0x00, 0x00, 0x0A];
 pub const AUTOSTART_ENABLE_SIGNAL: [u8; 9] = [0x00, 0xc9, 0x47, 0x24, 0x01, 0x01, 0x00, 0x00, 0x3f];
 pub const AUTOSTART_DISABLE_SIGNAL: [u8; 9] = [0x00, 0xc9, 0x47, 0x24, 0x01, 0x00, 0x00, 0x00, 0x54];
 
 pub const SMARTGESTURE_ENABLE_SIGNAL: [u8; 9] = [0x00, 0xc9, 0x47, 0x24, 0x04, 0x01, 0x00, 0x00, 0x3c];
 pub const SMARTGESTURE_DISABLE_SIGNAL: [u8; 9] = [0x00, 0xc9, 0x47, 0x24, 0x04, 0x00, 0x00, 0x00, 0x57];
 
-const LOAD_VIBRATE_CHARGE_START_SIGNAL: [u8; 9] = [0x00, 0xc9, 0x07, 0x04, 0x04, 0x00, 0x00, 0x00, 0x08];
 
 #[derive(Debug)]
 pub struct NotIlumaError;
@@ -69,7 +66,7 @@ impl IqosIluma for IqosBle {
         if !self.is_iluma_or_higher() {
             return Err(IQOSError::IncompatibleModelError);
         }
-        self.send_command(LOAD_VIBRATE_CHARGE_START_SIGNAL.to_vec()).await?;
+        self.send_command(vibration::LOAD_VIBRATE_CHARGE_START_SIGNAL.to_vec()).await?;
         let mut stream = self.notifications().await?;
         if let Some(notification) = stream.next().await {
             if let Ok(when_charge_start) = VibrationSettings::from_bytes_with_charge_start(notification.value.as_slice()) {

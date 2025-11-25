@@ -2,6 +2,7 @@ use super::variant::IlumaVibrationBehavior;
 use super::iluma::IlumaVibration;
 
 pub const LOAD_VIBRATION_SETTINGS_SIGNAL: [u8; 5] = [0x00, 0xc9, 0x00, 0x23, 0xE9];
+pub const LOAD_VIBRATE_CHARGE_START_SIGNAL: [u8; 9] = [0x00, 0xc9, 0x07, 0x04, 0x04, 0x00, 0x00, 0x00, 0x08];
 
 pub const WHEN_STARTING_TO_USE_SIGNAL: u16 = 0x1000;
 pub const WHEN_HEATING_START_SIGNAL: u16 = 0x0100;
