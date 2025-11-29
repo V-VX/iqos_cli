@@ -43,10 +43,10 @@ impl std::fmt::Display for IQOSModel {
         match self {
             IQOSModel::IlumaOne => write!(f, "Iluma ONE"),
             IQOSModel::Iluma => write!(f, "ILUMA"),
-            IQOSModel::IlumaPrime => write!(f, "ILUMA Prime"),
-            IQOSModel::IlumaIOne => write!(f, "Iluma i One"),
+            IQOSModel::IlumaPrime => write!(f, "ILUMA PRIME"),
+            IQOSModel::IlumaIOne => write!(f, "Iluma i ONE"),
             IQOSModel::IlumaI => write!(f, "ILUMA i"),
-            IQOSModel::IlumaIPrime => write!(f, "ILUMA i Prime"),
+            IQOSModel::IlumaIPrime => write!(f, "ILUMA i PRIME"),
         }
     }
 }
