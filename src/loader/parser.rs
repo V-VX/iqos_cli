@@ -144,7 +144,7 @@ async fn register_all_commands(console: &IQOSConsole) {
     crate::loader::cmds::vibration::register_command(console).await;
     crate::loader::cmds::autostart::register_command(console).await;
     crate::loader::cmds::smartgesture::register_command(console).await;
-    crate::loader::cmds::telemetry::register_command(console).await;
+    crate::loader::cmds::diagnosis::register_command(console).await;
     
     // TODO: Register other command modules here as needed
 }

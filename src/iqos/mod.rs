@@ -8,7 +8,7 @@ pub mod flexbattery;
 pub mod brightness;
 pub mod vibration;
 pub mod flexpuff;
-pub mod telemetry;
+pub mod diagnosis;
 pub mod firmware_version;
 
 use uuid::{uuid, Uuid};
@@ -22,7 +22,7 @@ pub use device::{Iqos, IqosIluma, IqosIlumaI};
 pub use brightness::BrightnessLevel;
 pub use vibration::VibrationSettings;
 pub use flexpuff::Flexpuff;
-pub use telemetry::Telemetry;
+pub use diagnosis::Diagnosis;
 pub use firmware_version::{FirmwareVersion, FirmwareKind, LOAD_STICK_FIRMWARE_VERSION_SIGNAL, LOAD_HOLDER_FIRMWARE_VERSION_SIGNAL};
 
 // Service UUIDs

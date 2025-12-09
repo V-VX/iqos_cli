@@ -1,3 +1,5 @@
+use crate::iqos::Diagnosis;
+
 use super::error::Result;
 use super::brightness::BrightnessLevel;
 use super::vibration::{IlumaVibrationBehavior, VibrationSettings};
@@ -27,7 +29,7 @@ pub trait Iqos {
 
     async fn update_vibration_settings(&self, settings: VibrationSettings) -> Result<()>;
 
-    async fn telemetry(&self) -> Result<()>;
+    async fn diagnosis(&self) -> Result<Diagnosis>;
 }
 
 pub trait IqosIluma: Send + Sync {

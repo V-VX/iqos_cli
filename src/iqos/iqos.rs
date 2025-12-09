@@ -6,8 +6,11 @@ use super::iluma::IlumaSpecific;
 use super::{IqosIluma, COMMAND_CHECKSUM_XOR};
 use super::brightness::{BrightnessLevel, LOAD_BRIGHTNESS_SIGNAL, BRIGHTNESS_HIGH_SIGNAL, BRIGHTNESS_LOW_SIGNAL};
 use super::vibration::{VibrationBehavior, VibrationSettings, LOAD_VIBRATION_SETTINGS_SIGNAL};
-use super::telemetry::{LOAD_TELEMETRY_SIGNAL, Telemetry};
-use crate::iqos::firmware_version::{self, FirmwareVersion};
+use super::diagnosis::{
+    ALL_DIAGNOSIS_SIGNALS,
+    Diagnosis
+};
+use crate::iqos::firmware_version::{FirmwareVersion};
 
 use btleplug::api::{Characteristic, Peripheral as _, WriteType};
 use btleplug::platform::Peripheral;
@@ -164,6 +167,60 @@ impl IqosBle {
         Ok(())
     }
 
+    /// Sends a command and waits for a single notification response.
+    /// 
+    /// This is the fundamental request-response pattern for BLE communication.
+    /// Returns the raw bytes from the notification.
+    async fn request(&self, command: &[u8]) -> Result<Vec<u8>> {
+        #[cfg(debug_assertions)]
+        {
+            let cmd_hex: String = command.iter().map(|b| format!("{b:02X}")).collect::<Vec<_>>().join(" ");
+            eprintln!("[DEBUG] TX: {cmd_hex}");
+        }
+
+        self.send_command(command.to_vec()).await?;
+        let mut stream = self.notifications().await?;
+        
+        let response = stream
+            .next()
+            .await
+            .map(|n| n.value)
+            .ok_or_else(|| IQOSError::ConfigurationError("No response received".to_string()))?;
+
+        #[cfg(debug_assertions)]
+        {
+            let rx_hex: String = response.iter().map(|b| format!("{b:02X}")).collect::<Vec<_>>().join(" ");
+            eprintln!("[DEBUG] RX: {rx_hex}");
+        }
+
+        Ok(response)
+    }
+
+    /// Sends a command and parses the response using the provided parser function.
+    /// 
+    /// # Example
+    /// ```ignore
+    /// let brightness = self.request_parse(&LOAD_BRIGHTNESS_SIGNAL, BrightnessLevel::from_bytes).await?;
+    /// ```
+    async fn request_parse<T, F>(&self, command: &[u8], parser: F) -> Result<T>
+    where
+        F: FnOnce(&[u8]) -> Result<T>,
+    {
+        let bytes = self.request(command).await?;
+        parser(&bytes)
+    }
+
+    /// Sends multiple commands sequentially, collecting all responses.
+    /// 
+    /// Useful for operations that require multiple request-response cycles.
+    async fn request_multi(&self, commands: &[&[u8]]) -> Result<Vec<Vec<u8>>> {
+        let mut responses = Vec::with_capacity(commands.len());
+        for command in commands {
+            responses.push(self.request(command).await?);
+        }
+        Ok(responses)
+    }
+
     pub fn as_iluma(&self) -> Option<&IqosBle> {
         match self.model {
             IQOSModel::Iluma => Some(self),
@@ -247,23 +304,7 @@ impl Iqos for IqosBle {
     }
     
     async fn load_brightness(&self) -> Result<BrightnessLevel> {
-        self.send_command(LOAD_BRIGHTNESS_SIGNAL.to_vec()).await?;
-        let mut stream = self.notifications().await?;
-
-        if let Some(notification) = stream.next().await {
-            let hex_string = notification.value.iter()
-                .map(|byte| format!("{:02X}", byte))
-                .collect::<Vec<String>>()
-                .join(" ");
-            
-            if let Ok(settings) = BrightnessLevel::from_bytes(&notification.value) {
-                return Ok(settings);
-            } else {
-                return Err(IQOSError::ConfigurationError("Failed to parse brightness settings".to_string()));
-            }
-        } else {
-            return Err(IQOSError::ConfigurationError("No notifications received".to_string()));
-        }
+        self.request_parse(&LOAD_BRIGHTNESS_SIGNAL, BrightnessLevel::from_bytes).await
     }
 
     async fn update_brightness(&self, level: BrightnessLevel) -> Result<()> {
@@ -274,24 +315,7 @@ impl Iqos for IqosBle {
     }
 
     async fn load_vibration_settings(&self) -> Result<VibrationSettings> {
-        self.send_command(LOAD_VIBRATION_SETTINGS_SIGNAL.to_vec()).await?;
-        let mut stream = self.notifications().await?;
-
-        if let Some(notification) = stream.next().await {
-            let hex_string = notification.value.iter()
-                .map(|byte| format!("{:02X}", byte))
-                .collect::<Vec<String>>()
-                .join(" ");
-            
-            // if let Some(iluma) = .as_iluma()
-            if let Ok(settings) = VibrationSettings::from_bytes(&notification.value) {
-                return Ok(settings);
-            } else {
-                return Err(IQOSError::ConfigurationError("Failed to parse vibration settings".to_string()));
-            }
-        } else {
-            return Err(IQOSError::ConfigurationError("No notifications received".to_string()));
-        }
+        self.request_parse(&LOAD_VIBRATION_SETTINGS_SIGNAL, VibrationSettings::from_bytes).await
     }
 
     async fn update_vibration_settings(&self, settings: VibrationSettings) -> Result<()> {
@@ -311,22 +335,13 @@ impl Iqos for IqosBle {
         Ok(())
     }
 
-    async fn telemetry(&self) -> Result<()> {
-        self.send_command(LOAD_TELEMETRY_SIGNAL.to_vec()).await?;
-        let mut stream = self.notifications().await?;
-
-        if let Some(notification) = stream.next().await {
-            let hex_string = notification.value.iter()
-                .map(|byte| format!("{:02X}", byte))
-                .collect::<Vec<String>>()
-                .join(" ");
-            println!("Telemetry Data: {}", hex_string);
-            Telemetry::from_bytes(&notification.value);
-            return Ok(());
-        } else {
-            Err(IQOSError::ConfigurationError("No telemetry data received".to_string()))
-        }
-
+    async fn diagnosis(&self) -> Result<Diagnosis> {
+        let responses = self.request_multi(ALL_DIAGNOSIS_SIGNALS).await?;
+        
+        responses
+            .iter()
+            .try_fold(Diagnosis::builder(), |builder, bytes| builder.parse(bytes))
+            .map(|builder| builder.build())
     }
 }
 

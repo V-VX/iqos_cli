@@ -10,16 +10,16 @@ use super::command::{CommandRegistry, CommandInfo};
 
 pub fn command_info() -> CommandInfo {
     CommandInfo::new(
-        "telemetry",
+        "diagnosis",
         "Retrieve telemetry data from the device",
-        "Usage: telemetry",
+        "Usage: diagnosis",
         false,
         false,
     )
 }
 
 pub async fn register_command(console: &IQOSConsole) {
-    console.register_command("telemetry", Box::new(|iqos, args| {
+    console.register_command("diagnosis", Box::new(|iqos, args| {
         Box::pin(async move {
             execute_command(iqos, args).await
         })
@@ -28,9 +28,9 @@ pub async fn register_command(console: &IQOSConsole) {
 
 pub async fn execute_command(iqos: Arc<Mutex<IqosBle>>, args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
-    let result = Iqos::telemetry(&*iqos).await;
+    let result = Iqos::diagnosis(&*iqos).await;
     match result {
-        Ok(_) => println!("Telemetry data retrieved successfully."),
+        Ok(_) => println!("{}", result.unwrap()),
         Err(e) => println!("Error retrieving telemetry data: {}", e),
     }
     Ok(())
