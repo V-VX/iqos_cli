@@ -1,10 +1,14 @@
 pub mod autostart;
+pub mod battery;
 pub mod brightness;
 pub mod command;
 pub mod diagnosis;
+pub mod findmyiqos;
 pub mod flexbattery;
 pub mod flexpuff;
+pub mod help;
+pub mod info;
+pub mod lock;
 pub mod smartgesture;
+pub mod unlock;
 pub mod vibration;
-
-// Add more command modules here as needed

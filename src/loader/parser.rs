@@ -1,10 +1,11 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{DeviceCapability, Iqos, IqosBle};
+use iqos::{Iqos, IqosBle};
 use rustyline::error::ReadlineError;
-use rustyline::{Config, DefaultEditor, Editor};
+use rustyline::{Config, Editor};
 use tokio::sync::Mutex;
 
 use crate::loader::cmds::command::{CommandFn, CommandRegistry};
@@ -44,7 +45,8 @@ impl IQOSConsole {
         let mut rl = Editor::<IqosHelper, rustyline::history::DefaultHistory>::with_config(config)?;
         rl.set_helper(Some(IqosHelper::new()));
 
-        if rl.load_history("history.txt").is_err() {
+        let history_path = history_file();
+        if rl.load_history(&history_path).is_err() {
             println!("No history file found");
         }
 
@@ -75,7 +77,7 @@ impl IQOSConsole {
             }
         }
 
-        rl.save_history("history.txt")?;
+        rl.save_history(&history_path)?;
         Ok(())
     }
 }
@@ -87,7 +89,12 @@ pub async fn run_console(iqos: Iqos<IqosBle>) -> Result<()> {
 }
 
 fn register_all_commands(console: &mut IQOSConsole) {
-    register_builtin_commands(console);
+    crate::loader::cmds::help::register_command(console);
+    crate::loader::cmds::battery::register_command(console);
+    crate::loader::cmds::info::register_command(console);
+    crate::loader::cmds::lock::register_command(console);
+    crate::loader::cmds::unlock::register_command(console);
+    crate::loader::cmds::findmyiqos::register_command(console);
     crate::loader::cmds::flexpuff::register_command(console);
     crate::loader::cmds::flexbattery::register_command(console);
     crate::loader::cmds::brightness::register_command(console);
@@ -97,126 +104,8 @@ fn register_all_commands(console: &mut IQOSConsole) {
     crate::loader::cmds::diagnosis::register_command(console);
 }
 
-fn register_builtin_commands(console: &mut IQOSConsole) {
-    console.register_command(
-        "help",
-        Box::new(|iqos, _| {
-            Box::pin(async move {
-                let iqos = iqos.lock().await;
-                let model = iqos.transport().model();
-                println!("Available commands:");
-                println!("  battery            Display battery level");
-                println!("  lock | unlock      Lock or unlock the device");
-                println!("  findmyiqos         Activate find-my-device vibration");
-                println!("  autostart [on|off] Configure auto-start");
-                println!("  diagnosis          Retrieve telemetry data");
-                if model.is_iluma_family() {
-                    println!("\nILUMA commands:");
-                    println!("  brightness [high|low]                     Set brightness");
-                    println!("  smartgesture [enable|disable]             Configure SmartGesture");
-                    println!("  flexpuff [enable|disable|status]          Configure FlexPuff");
-                    println!("  vibration [heating|starting|terminated|puffend] [on|off] ...");
-                    if model.supports(DeviceCapability::FlexBattery) {
-                        println!("  flexbattery [performance|eco|pause on|off]");
-                    }
-                }
-                println!("\n  info               Device information");
-                println!("  help               This help");
-                println!("  quit | exit        Exit");
-                Ok(())
-            })
-        }),
-    );
-
-    console.register_command(
-        "battery",
-        Box::new(|iqos, _| {
-            Box::pin(async move {
-                let iqos = iqos.lock().await;
-                let level = iqos.transport().read_battery_level().await?;
-                println!("Battery: {level}%");
-                Ok(())
-            })
-        }),
-    );
-
-    console.register_command(
-        "info",
-        Box::new(|iqos, _| {
-            Box::pin(async move {
-                let iqos = iqos.lock().await;
-                let model = iqos.transport().model();
-                let info = iqos.transport().device_info();
-                println!("\nModel:        {:?}", model);
-                println!(
-                    "Serial:       {}",
-                    info.serial_number.as_deref().unwrap_or("N/A")
-                );
-                println!(
-                    "Software:     {}",
-                    info.software_revision.as_deref().unwrap_or("N/A")
-                );
-                println!(
-                    "Manufacturer: {}",
-                    info.manufacturer_name.as_deref().unwrap_or("N/A")
-                );
-                println!();
-                Ok(())
-            })
-        }),
-    );
-
-    console.register_command(
-        "lock",
-        Box::new(|iqos, _| {
-            Box::pin(async move {
-                let iqos = iqos.lock().await;
-                iqos.lock(iqos.transport().model()).await?;
-                println!("Device locked");
-                Ok(())
-            })
-        }),
-    );
-
-    console.register_command(
-        "unlock",
-        Box::new(|iqos, _| {
-            Box::pin(async move {
-                let iqos = iqos.lock().await;
-                iqos.unlock(iqos.transport().model()).await?;
-                println!("Device unlocked");
-                Ok(())
-            })
-        }),
-    );
-
-    console.register_command(
-        "findmyiqos",
-        Box::new(|iqos, _| {
-            Box::pin(async move {
-                println!("Starting Find My IQOS...");
-
-                {
-                    let iqos = iqos.lock().await;
-                    iqos.find_my_iqos_start().await?;
-                }
-
-                let prompt_result = tokio::task::block_in_place(|| -> Result<()> {
-                    let mut rl = DefaultEditor::new()?;
-                    let _ = rl.readline("Press <Enter> to stop"); // any input or EOF proceeds to stop
-                    Ok(())
-                });
-
-                let stop_result = {
-                    let iqos = iqos.lock().await;
-                    iqos.find_my_iqos_stop().await
-                };
-
-                prompt_result?;
-                stop_result?;
-                println!("Stopped.");
-                Ok(())
-            })
-        }),
-    );
+fn history_file() -> PathBuf {
+    dirs::home_dir()
+        .map(|h| h.join(".iqos_history"))
+        .unwrap_or_else(|| "history.txt".into())
 }
