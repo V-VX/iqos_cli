@@ -6,10 +6,11 @@ use tokio::sync::Mutex;
 
 use crate::loader::parser::IQOSConsole;
 
-pub async fn register_command(console: &IQOSConsole) {
-    console.register_command("flexbattery", Box::new(|iqos, args| {
-        Box::pin(async move { execute(iqos, args).await })
-    })).await;
+pub fn register_command(console: &mut IQOSConsole) {
+    console.register_command(
+        "flexbattery",
+        Box::new(|iqos, args| Box::pin(async move { execute(iqos, args).await })),
+    );
 }
 
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
@@ -23,7 +24,11 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
 
     if args.len() == 1 {
         match iqos.read_flexbattery(model).await {
-            Ok(s) => println!("FlexBattery: mode={:?}, pause={:?}", s.mode(), s.pause_mode()),
+            Ok(s) => println!(
+                "FlexBattery: mode={:?}, pause={:?}",
+                s.mode(),
+                s.pause_mode()
+            ),
             Err(e) => println!("Error: {e}"),
         }
     } else {
@@ -41,7 +46,10 @@ fn parse_args(args: &[String]) -> Result<FlexBatterySettings> {
         Some("eco") => Ok(FlexBatterySettings::new(FlexBatteryMode::Eco, None)),
         Some("pause") => {
             let enabled = args.get(1).map(|s| s == "on");
-            Ok(FlexBatterySettings::new(FlexBatteryMode::Performance, enabled))
+            Ok(FlexBatterySettings::new(
+                FlexBatteryMode::Performance,
+                enabled,
+            ))
         }
         Some(s) => bail!("Invalid option: {s}. Use performance/eco/pause [on|off]"),
         None => bail!("Usage: flexbattery [performance|eco|pause on|off]"),

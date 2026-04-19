@@ -6,10 +6,11 @@ use tokio::sync::Mutex;
 
 use crate::loader::parser::IQOSConsole;
 
-pub async fn register_command(console: &IQOSConsole) {
-    console.register_command("flexpuff", Box::new(|iqos, args| {
-        Box::pin(async move { execute(iqos, args).await })
-    })).await;
+pub fn register_command(console: &mut IQOSConsole) {
+    console.register_command(
+        "flexpuff",
+        Box::new(|iqos, args| Box::pin(async move { execute(iqos, args).await })),
+    );
 }
 
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
@@ -30,7 +31,14 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
             println!("FlexPuff disabled");
         }
         Some("status") | None => match iqos.read_flexpuff().await {
-            Ok(s) => println!("FlexPuff: {}", if s.is_enabled() { "enabled" } else { "disabled" }),
+            Ok(s) => println!(
+                "FlexPuff: {}",
+                if s.is_enabled() {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            ),
             Err(e) => println!("Error: {e}"),
         },
         Some(opt) => println!("Invalid option: {opt}. Use enable/disable/status"),

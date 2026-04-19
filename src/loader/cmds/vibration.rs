@@ -6,10 +6,11 @@ use tokio::sync::Mutex;
 
 use crate::loader::parser::IQOSConsole;
 
-pub async fn register_command(console: &IQOSConsole) {
-    console.register_command("vibration", Box::new(|iqos, args| {
-        Box::pin(async move { execute(iqos, args).await })
-    })).await;
+pub fn register_command(console: &mut IQOSConsole) {
+    console.register_command(
+        "vibration",
+        Box::new(|iqos, args| Box::pin(async move { execute(iqos, args).await })),
+    );
 }
 
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
@@ -38,13 +39,17 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
 
 fn parse_base(args: &[&str]) -> Result<VibrationSettings> {
     let (heating, starting, puff_end, terminated) = parse_flags(args);
-    Ok(VibrationSettings::new(heating, starting, puff_end, terminated))
+    Ok(VibrationSettings::new(
+        heating, starting, puff_end, terminated,
+    ))
 }
 
 fn parse_with_charge(args: &[&str]) -> Result<VibrationSettings> {
     let (heating, starting, puff_end, terminated) = parse_flags(args);
     let charge = flag_value(args, "charge");
-    Ok(VibrationSettings::with_charge_start(heating, starting, puff_end, terminated, charge))
+    Ok(VibrationSettings::with_charge_start(
+        heating, starting, puff_end, terminated, charge,
+    ))
 }
 
 fn parse_flags(args: &[&str]) -> (bool, bool, bool, bool) {

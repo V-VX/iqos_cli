@@ -6,10 +6,11 @@ use tokio::sync::Mutex;
 
 use crate::loader::parser::IQOSConsole;
 
-pub async fn register_command(console: &IQOSConsole) {
-    console.register_command("brightness", Box::new(|iqos, args| {
-        Box::pin(async move { execute(iqos, args).await })
-    })).await;
+pub fn register_command(console: &mut IQOSConsole) {
+    console.register_command(
+        "brightness",
+        Box::new(|iqos, args| Box::pin(async move { execute(iqos, args).await })),
+    );
 }
 
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
