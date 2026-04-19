@@ -1,59 +1,49 @@
 use std::sync::Arc;
-use anyhow::Result;
+
+use anyhow::{bail, Result};
+use iqos::{FlexBatteryMode, FlexBatterySettings, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::iqos::IqosBle;
-use crate::iqos::IqosIlumaI;
-use crate::iqos::flexbattery::FlexBattery;
 use crate::loader::parser::IQOSConsole;
 
-use super::command::{CommandRegistry, CommandInfo};
-
-/// Get information about the flexbattery command
-pub fn command_info() -> CommandInfo {
-    CommandInfo::new(
-        "flexbattery",
-        "Configure FlexBattery feature",
-        "Usage: flexbattery [performance|eco] | pause [on|off]",
-        true,  // Requires ILUMA model
-        true,  // Requires ILUMA-i model
-    )
-}
-
-/// Register the flexbattery command
 pub async fn register_command(console: &IQOSConsole) {
     console.register_command("flexbattery", Box::new(|iqos, args| {
-        Box::pin(async move {
-            execute_command(iqos, args).await
-        })
+        Box::pin(async move { execute(iqos, args).await })
     })).await;
 }
 
-/// Execute the flexbattery command
-async fn execute_command(iqos: Arc<Mutex<IqosBle>>, args: Vec<String>) -> Result<()> {
+async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
-    let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
+    let model = iqos.transport().model();
+
+    if !model.is_iluma_i_family() {
+        println!("FlexBattery is only available on ILUMA i devices");
+        return Ok(());
+    }
 
     if args.len() == 1 {
-        // No arguments provided, show current flexbattery mode
-        if let Some(iluma_i) = iqos.as_iluma_i() {
-            match iluma_i.load_flexbattery().await {
-                Ok(flexbattery) => println!("\n{}\n", flexbattery),
-                Err(e) => println!("Error: {}", e),
-            }
-        } else {
-            println!("This device is not an ILUMA i model");
-        }
-    } else if args.len() >= 2 {
-        if let Some(iluma_i) = iqos.as_iluma_i() {
-            let fb = FlexBattery::from_args(&str_args[1..])?;
-            iluma_i.update_flexbattery(fb).await?;
-            println!("Flexbattery mode updated.");
-        } else {
-            println!("This device is not an ILUMA i model");
+        match iqos.read_flexbattery(model).await {
+            Ok(s) => println!("FlexBattery: mode={:?}, pause={:?}", s.mode(), s.pause_mode()),
+            Err(e) => println!("Error: {e}"),
         }
     } else {
-        println!("Usage: flexbattery [performance|eco] | pause [on|off]");
+        let settings = parse_args(&args[1..])?;
+        iqos.set_flexbattery(model, settings).await?;
+        println!("FlexBattery settings updated");
     }
+
     Ok(())
+}
+
+fn parse_args(args: &[String]) -> Result<FlexBatterySettings> {
+    match args.first().map(String::as_str) {
+        Some("performance") => Ok(FlexBatterySettings::new(FlexBatteryMode::Performance, None)),
+        Some("eco") => Ok(FlexBatterySettings::new(FlexBatteryMode::Eco, None)),
+        Some("pause") => {
+            let enabled = args.get(1).map(|s| s == "on");
+            Ok(FlexBatterySettings::new(FlexBatteryMode::Performance, enabled))
+        }
+        Some(s) => bail!("Invalid option: {s}. Use performance/eco/pause [on|off]"),
+        None => bail!("Usage: flexbattery [performance|eco|pause on|off]"),
+    }
 }
