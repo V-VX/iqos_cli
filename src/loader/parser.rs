@@ -12,13 +12,13 @@ use crate::loader::iqoshelper::IqosHelper;
 
 pub struct IQOSConsole {
     commands: CommandRegistry,
-    pub iqos: Arc<Mutex<Iqos<IqosBle>>>,
+    iqos: Arc<Mutex<Iqos<IqosBle>>>,
 }
 
 impl IQOSConsole {
     pub fn new(iqos: Iqos<IqosBle>) -> Self {
         Self {
-            commands: HashMap::new(),
+            commands: HashMap::with_capacity(16),
             iqos: Arc::new(Mutex::new(iqos)),
         }
     }
@@ -51,7 +51,9 @@ impl IQOSConsole {
         loop {
             match tokio::task::block_in_place(|| rl.readline("iqos> ")) {
                 Ok(line) => {
-                    let _ = rl.add_history_entry(&line);
+                    if let Err(e) = rl.add_history_entry(&line) {
+                        eprintln!("Warning: could not save history entry: {e}");
+                    }
                     let args: Vec<String> = line.split_whitespace().map(str::to_string).collect();
                     if args.is_empty() {
                         continue;
@@ -62,12 +64,12 @@ impl IQOSConsole {
                         break;
                     }
                     if let Err(e) = self.execute_command(&cmd, args).await {
-                        println!("Error: {e}");
+                        eprintln!("Error: {e}");
                     }
                 }
                 Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
                 Err(e) => {
-                    println!("Error: {e:?}");
+                    eprintln!("Error: {e:?}");
                     break;
                 }
             }
@@ -201,7 +203,7 @@ fn register_builtin_commands(console: &mut IQOSConsole) {
 
                 let prompt_result = tokio::task::block_in_place(|| -> Result<()> {
                     let mut rl = DefaultEditor::new()?;
-                    let _ = rl.readline("Press <Enter> to stop");
+                    let _ = rl.readline("Press <Enter> to stop"); // any input or EOF proceeds to stop
                     Ok(())
                 });
 
