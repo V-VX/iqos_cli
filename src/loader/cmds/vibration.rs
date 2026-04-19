@@ -67,3 +67,53 @@ fn flag_value(args: &[&str], key: &str) -> bool {
         .map(|w| w[1] == "on")
         .unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn flag_value_true_when_key_on() {
+        assert!(flag_value(&["heating", "on"], "heating"));
+    }
+
+    #[test]
+    fn flag_value_false_when_key_off() {
+        assert!(!flag_value(&["heating", "off"], "heating"));
+    }
+
+    #[test]
+    fn flag_value_false_when_key_absent() {
+        assert!(!flag_value(&["starting", "on"], "heating"));
+    }
+
+    #[test]
+    fn flag_value_false_when_empty() {
+        assert!(!flag_value(&[], "heating"));
+    }
+
+    #[test]
+    fn flag_value_false_when_single_element() {
+        assert!(!flag_value(&["heating"], "heating"));
+    }
+
+    #[test]
+    fn parse_base_returns_ok() {
+        assert!(parse_base(&["heating", "on", "starting", "off"]).is_ok());
+    }
+
+    #[test]
+    fn parse_base_empty_args_returns_ok_with_defaults() {
+        assert!(parse_base(&[]).is_ok());
+    }
+
+    #[test]
+    fn parse_with_charge_returns_ok() {
+        assert!(parse_with_charge(&["charge", "on", "heating", "on"]).is_ok());
+    }
+
+    #[test]
+    fn parse_with_charge_empty_returns_ok_with_defaults() {
+        assert!(parse_with_charge(&[]).is_ok());
+    }
+}

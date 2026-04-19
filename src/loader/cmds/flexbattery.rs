@@ -55,3 +55,50 @@ fn parse_args(args: &[String]) -> Result<FlexBatterySettings> {
         None => bail!("Usage: flexbattery [performance|eco|pause on|off]"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn performance_returns_ok() {
+        assert!(parse_args(&args(&["performance"])).is_ok());
+    }
+
+    #[test]
+    fn eco_returns_ok() {
+        assert!(parse_args(&args(&["eco"])).is_ok());
+    }
+
+    #[test]
+    fn pause_on_sets_pause_mode_true() {
+        let s = parse_args(&args(&["pause", "on"])).unwrap();
+        assert_eq!(s.pause_mode(), Some(true));
+    }
+
+    #[test]
+    fn pause_off_sets_pause_mode_false() {
+        let s = parse_args(&args(&["pause", "off"])).unwrap();
+        assert_eq!(s.pause_mode(), Some(false));
+    }
+
+    #[test]
+    fn pause_no_value_sets_pause_mode_none() {
+        let s = parse_args(&args(&["pause"])).unwrap();
+        assert_eq!(s.pause_mode(), None);
+    }
+
+    #[test]
+    fn invalid_option_returns_err() {
+        assert!(parse_args(&args(&["turbo"])).is_err());
+    }
+
+    #[test]
+    fn empty_args_returns_err() {
+        assert!(parse_args(&args(&[])).is_err());
+    }
+}
