@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use iqos::{Iqos, IqosBle, VibrationSettings};
 use tokio::sync::Mutex;
 
@@ -19,53 +19,59 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let str_args: Vec<&str> = args.iter().map(String::as_str).collect();
 
     if args.len() == 1 {
-        match iqos.read_vibration_settings(model).await {
-            Ok(s) => println!("{s:?}"),
-            Err(e) => println!("Error: {e}"),
-        }
-    } else {
-        let param_args = &str_args[1..];
-        let settings = if model.supports_charge_start_vibration() {
-            parse_with_charge(param_args)?
-        } else {
-            parse_base(param_args)?
-        };
-        iqos.update_vibration_settings(model, settings).await?;
-        println!("Vibration settings updated");
+        let s = iqos.read_vibration_settings(model).await?;
+        println!("{s:?}");
+        return Ok(());
     }
 
+    let param_args = &str_args[1..];
+    validate_flags(param_args)?;
+    let current = iqos.read_vibration_settings(model).await?;
+    let settings = apply_changes(current, param_args, model.supports_charge_start_vibration())?;
+    iqos.update_vibration_settings(model, settings).await?;
+    println!("Vibration settings updated");
     Ok(())
 }
 
-fn parse_base(args: &[&str]) -> Result<VibrationSettings> {
-    let (heating, starting, puff_end, terminated) = parse_flags(args);
-    Ok(VibrationSettings::new(
-        heating, starting, puff_end, terminated,
-    ))
+fn validate_flags(args: &[&str]) -> Result<()> {
+    const VALID: &[&str] = &["heating", "starting", "puffend", "terminated", "charge"];
+    if args.len() % 2 != 0 {
+        bail!("Each flag requires a value. Usage: vibration [heating|starting|puffend|terminated|charge] [on|off] ...");
+    }
+    for chunk in args.chunks(2) {
+        if !VALID.contains(&chunk[0]) {
+            bail!("Unknown flag '{}'. Valid: heating, starting, puffend, terminated, charge", chunk[0]);
+        }
+        if chunk[1] != "on" && chunk[1] != "off" {
+            bail!("Invalid value '{}' for '{}'. Use on or off", chunk[1], chunk[0]);
+        }
+    }
+    Ok(())
 }
 
-fn parse_with_charge(args: &[&str]) -> Result<VibrationSettings> {
-    let (heating, starting, puff_end, terminated) = parse_flags(args);
-    let charge = flag_value(args, "charge");
-    Ok(VibrationSettings::with_charge_start(
-        heating, starting, puff_end, terminated, charge,
-    ))
-}
-
-fn parse_flags(args: &[&str]) -> (bool, bool, bool, bool) {
-    (
-        flag_value(args, "heating"),
-        flag_value(args, "starting"),
-        flag_value(args, "puffend"),
-        flag_value(args, "terminated"),
-    )
-}
-
-fn flag_value(args: &[&str], key: &str) -> bool {
+fn flag_update(args: &[&str], key: &str) -> Option<bool> {
     args.windows(2)
         .find(|w| w[0] == key)
         .map(|w| w[1] == "on")
-        .unwrap_or(false)
+}
+
+fn apply_changes(
+    current: VibrationSettings,
+    args: &[&str],
+    has_charge: bool,
+) -> Result<VibrationSettings> {
+    let heating = flag_update(args, "heating").unwrap_or(current.when_heating_start());
+    let starting = flag_update(args, "starting").unwrap_or(current.when_starting_to_use());
+    let puff_end = flag_update(args, "puffend").unwrap_or(current.when_puff_end());
+    let terminated = flag_update(args, "terminated").unwrap_or(current.when_manually_terminated());
+
+    if has_charge {
+        let charge = flag_update(args, "charge")
+            .unwrap_or(current.when_charging_start().unwrap_or(false));
+        Ok(VibrationSettings::with_charge_start(heating, starting, puff_end, terminated, charge))
+    } else {
+        Ok(VibrationSettings::new(heating, starting, puff_end, terminated))
+    }
 }
 
 #[cfg(test)]
@@ -73,47 +79,61 @@ mod tests {
     use super::*;
 
     #[test]
-    fn flag_value_true_when_key_on() {
-        assert!(flag_value(&["heating", "on"], "heating"));
+    fn flag_update_on() {
+        assert_eq!(flag_update(&["heating", "on"], "heating"), Some(true));
     }
 
     #[test]
-    fn flag_value_false_when_key_off() {
-        assert!(!flag_value(&["heating", "off"], "heating"));
+    fn flag_update_off() {
+        assert_eq!(flag_update(&["heating", "off"], "heating"), Some(false));
     }
 
     #[test]
-    fn flag_value_false_when_key_absent() {
-        assert!(!flag_value(&["starting", "on"], "heating"));
+    fn flag_update_absent_is_none() {
+        assert_eq!(flag_update(&["starting", "on"], "heating"), None);
     }
 
     #[test]
-    fn flag_value_false_when_empty() {
-        assert!(!flag_value(&[], "heating"));
+    fn flag_update_empty_is_none() {
+        assert_eq!(flag_update(&[], "heating"), None);
     }
 
     #[test]
-    fn flag_value_false_when_single_element() {
-        assert!(!flag_value(&["heating"], "heating"));
+    fn validate_flags_rejects_odd_args() {
+        assert!(validate_flags(&["heating"]).is_err());
     }
 
     #[test]
-    fn parse_base_returns_ok() {
-        assert!(parse_base(&["heating", "on", "starting", "off"]).is_ok());
+    fn validate_flags_rejects_unknown_key() {
+        assert!(validate_flags(&["turbo", "on"]).is_err());
     }
 
     #[test]
-    fn parse_base_empty_args_returns_ok_with_defaults() {
-        assert!(parse_base(&[]).is_ok());
+    fn validate_flags_rejects_invalid_value() {
+        assert!(validate_flags(&["heating", "yes"]).is_err());
     }
 
     #[test]
-    fn parse_with_charge_returns_ok() {
-        assert!(parse_with_charge(&["charge", "on", "heating", "on"]).is_ok());
+    fn validate_flags_accepts_valid_pairs() {
+        assert!(validate_flags(&["heating", "on", "starting", "off"]).is_ok());
     }
 
     #[test]
-    fn parse_with_charge_empty_returns_ok_with_defaults() {
-        assert!(parse_with_charge(&[]).is_ok());
+    fn validate_flags_accepts_empty() {
+        assert!(validate_flags(&[]).is_ok());
+    }
+
+    #[test]
+    fn apply_changes_updates_only_specified_flag() {
+        let current = VibrationSettings::new(true, true, false, false);
+        let result = apply_changes(current, &["heating", "off"], false).unwrap();
+        assert_eq!(result, VibrationSettings::new(false, true, false, false));
+    }
+
+    #[test]
+    fn apply_changes_preserves_all_when_no_args() {
+        let current = VibrationSettings::new(true, false, true, false);
+        let result = apply_changes(current, &[], false).unwrap();
+        assert_eq!(result, current);
     }
 }
