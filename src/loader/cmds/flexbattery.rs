@@ -22,37 +22,34 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         return Ok(());
     }
 
-    if args.len() == 1 {
-        match iqos.read_flexbattery(model).await {
-            Ok(s) => println!(
-                "FlexBattery: mode={:?}, pause={:?}",
-                s.mode(),
-                s.pause_mode()
-            ),
-            Err(e) => println!("Error: {e}"),
+    let settings = match args.get(1).map(String::as_str) {
+        None => {
+            let s = iqos.read_flexbattery(model).await?;
+            println!("FlexBattery: mode={:?}, pause={:?}", s.mode(), s.pause_mode());
+            return Ok(());
         }
-    } else {
-        let settings = parse_args(&args[1..])?;
-        iqos.set_flexbattery(model, settings).await?;
-        println!("FlexBattery settings updated");
-    }
+        Some("pause") => {
+            let pause = parse_on_off(args.get(2).map(String::as_str))?;
+            // Read current mode so toggling pause doesn't overwrite it.
+            let current = iqos.read_flexbattery(model).await?;
+            FlexBatterySettings::new(current.mode(), pause)
+        }
+        Some("performance") => FlexBatterySettings::new(FlexBatteryMode::Performance, None),
+        Some("eco") => FlexBatterySettings::new(FlexBatteryMode::Eco, None),
+        Some(s) => bail!("Invalid option: {s}. Use performance/eco/pause [on|off]"),
+    };
 
+    iqos.set_flexbattery(model, settings).await?;
+    println!("FlexBattery settings updated");
     Ok(())
 }
 
-fn parse_args(args: &[String]) -> Result<FlexBatterySettings> {
-    match args.first().map(String::as_str) {
-        Some("performance") => Ok(FlexBatterySettings::new(FlexBatteryMode::Performance, None)),
-        Some("eco") => Ok(FlexBatterySettings::new(FlexBatteryMode::Eco, None)),
-        Some("pause") => {
-            let enabled = args.get(1).map(|s| s == "on");
-            Ok(FlexBatterySettings::new(
-                FlexBatteryMode::Performance,
-                enabled,
-            ))
-        }
-        Some(s) => bail!("Invalid option: {s}. Use performance/eco/pause [on|off]"),
-        None => bail!("Usage: flexbattery [performance|eco|pause on|off]"),
+fn parse_on_off(value: Option<&str>) -> Result<Option<bool>> {
+    match value {
+        Some("on") => Ok(Some(true)),
+        Some("off") => Ok(Some(false)),
+        None => Ok(None),
+        Some(s) => bail!("Invalid pause value: {s}. Use on/off"),
     }
 }
 
@@ -60,45 +57,23 @@ fn parse_args(args: &[String]) -> Result<FlexBatterySettings> {
 mod tests {
     use super::*;
 
-    fn args(v: &[&str]) -> Vec<String> {
-        v.iter().map(|s| s.to_string()).collect()
+    #[test]
+    fn pause_on_parsed() {
+        assert_eq!(parse_on_off(Some("on")).unwrap(), Some(true));
     }
 
     #[test]
-    fn performance_returns_ok() {
-        assert!(parse_args(&args(&["performance"])).is_ok());
+    fn pause_off_parsed() {
+        assert_eq!(parse_on_off(Some("off")).unwrap(), Some(false));
     }
 
     #[test]
-    fn eco_returns_ok() {
-        assert!(parse_args(&args(&["eco"])).is_ok());
+    fn pause_absent_is_none() {
+        assert_eq!(parse_on_off(None).unwrap(), None);
     }
 
     #[test]
-    fn pause_on_sets_pause_mode_true() {
-        let s = parse_args(&args(&["pause", "on"])).unwrap();
-        assert_eq!(s.pause_mode(), Some(true));
-    }
-
-    #[test]
-    fn pause_off_sets_pause_mode_false() {
-        let s = parse_args(&args(&["pause", "off"])).unwrap();
-        assert_eq!(s.pause_mode(), Some(false));
-    }
-
-    #[test]
-    fn pause_no_value_sets_pause_mode_none() {
-        let s = parse_args(&args(&["pause"])).unwrap();
-        assert_eq!(s.pause_mode(), None);
-    }
-
-    #[test]
-    fn invalid_option_returns_err() {
-        assert!(parse_args(&args(&["turbo"])).is_err());
-    }
-
-    #[test]
-    fn empty_args_returns_err() {
-        assert!(parse_args(&args(&[])).is_err());
+    fn pause_invalid_returns_err() {
+        assert!(parse_on_off(Some("yes")).is_err());
     }
 }
