@@ -53,12 +53,12 @@ impl IQOSConsole {
         loop {
             match tokio::task::block_in_place(|| rl.readline("iqos> ")) {
                 Ok(line) => {
-                    if let Err(e) = rl.add_history_entry(&line) {
-                        eprintln!("Warning: could not save history entry: {e}");
-                    }
                     let args: Vec<String> = line.split_whitespace().map(str::to_string).collect();
                     if args.is_empty() {
                         continue;
+                    }
+                    if let Err(e) = rl.add_history_entry(&line) {
+                        eprintln!("Warning: could not save history entry: {e}");
                     }
                     let cmd = args[0].to_ascii_lowercase();
                     if cmd == "exit" || cmd == "quit" {
