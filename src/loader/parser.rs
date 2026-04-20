@@ -77,7 +77,9 @@ impl IQOSConsole {
             }
         }
 
-        rl.save_history(&history_path)?;
+        if let Err(e) = rl.save_history(&history_path) {
+            eprintln!("Warning: could not save history: {e}");
+        }
         Ok(())
     }
 }
@@ -106,6 +108,6 @@ fn register_all_commands(console: &mut IQOSConsole) {
 
 fn history_file() -> PathBuf {
     dirs::home_dir()
-        .map(|h| h.join(".iqos_history"))
-        .unwrap_or_else(|| "history.txt".into())
+        .unwrap_or_else(std::env::temp_dir)
+        .join(".iqos_history")
 }
