@@ -30,17 +30,10 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
             iqos.set_flexpuff(FlexPuffSetting::new(false)).await?;
             println!("FlexPuff disabled");
         }
-        Some("status") | None => match iqos.read_flexpuff().await {
-            Ok(s) => println!(
-                "FlexPuff: {}",
-                if s.is_enabled() {
-                    "enabled"
-                } else {
-                    "disabled"
-                }
-            ),
-            Err(e) => println!("Error: {e}"),
-        },
+        Some("status") | None => {
+            let s = iqos.read_flexpuff().await?;
+            println!("FlexPuff: {}", if s.is_enabled() { "enabled" } else { "disabled" });
+        }
         Some(opt) => println!("Invalid option: {opt}. Use enable/disable/status"),
     }
 

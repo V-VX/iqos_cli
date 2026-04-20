@@ -15,20 +15,16 @@ pub fn register_command(console: &mut IQOSConsole) {
 
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, _args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
-    match iqos.read_diagnosis().await {
-        Ok(data) => {
-            println!("Diagnosis:");
-            if let Some(count) = data.total_smoking_count {
-                println!("  Total puffs:     {count}");
-            }
-            if let Some(days) = data.days_used {
-                println!("  Days used:       {days}");
-            }
-            if let Some(volts) = data.battery_voltage {
-                println!("  Battery voltage: {volts:.2}V");
-            }
-        }
-        Err(e) => println!("Error: {e}"),
+    let data = iqos.read_diagnosis().await?;
+    println!("Diagnosis:");
+    if let Some(count) = data.total_smoking_count {
+        println!("  Total puffs:     {count}");
+    }
+    if let Some(days) = data.days_used {
+        println!("  Days used:       {days}");
+    }
+    if let Some(volts) = data.battery_voltage {
+        println!("  Battery voltage: {volts:.2}V");
     }
     Ok(())
 }

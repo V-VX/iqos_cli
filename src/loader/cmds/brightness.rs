@@ -27,10 +27,10 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
             println!("Brightness set to {level}");
         }
         Some(Err(e)) => println!("{e}"),
-        None => match iqos.read_brightness().await {
-            Ok(level) => println!("Brightness: {level}"),
-            Err(e) => println!("Error: {e}"),
-        },
+        None => {
+            let level = iqos.read_brightness().await?;
+            println!("Brightness: {level}");
+        }
     }
 
     Ok(())
