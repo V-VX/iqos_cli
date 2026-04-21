@@ -2,23 +2,23 @@
 
 <div align="center">
 
-**A powerful command-line interface for controlling IQOS devices via Bluetooth Low Energy**
+**A command-line interface for controlling IQOS devices via Bluetooth Low Energy**
 
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg?style=flat-square)](https://github.com/yourusername/iqos_cli)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg?style=flat-square)](https://github.com/v-vx/iqos_cli)
 
-[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Commands](#-commands) • [Contributing](#-contributing)
+[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Commands](#-commands-reference) • [Contributing](#-contributing)
 
 </div>
 
 ---
 
-## 📖 Table of Contents
+## Table of Contents
 
 - [Overview](#-overview)
 - [Features](#-features)
-- [Device Compatibility](#-device-comatibility)
+- [Device Compatibility](#-device-compatibility)
 - [Prerequisites](#-prerequisites)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
@@ -29,359 +29,273 @@
 - [Contributing](#-contributing)
 - [License](#-license)
 
-## 🎯 Overview
+## Overview
 
-IQOS CLI is a comprehensive Rust-based command-line tool that provides full control over IQOS devices through Bluetooth Low Energy (BLE) connections. Built with modern Rust practices and async/await patterns, it offers a robust, maintainable, and efficient way to interact with IQOS ILUMA, ILUMA i, and ILUMA ONE devices.
+IQOS CLI is a Rust-based command-line tool for controlling IQOS devices over Bluetooth Low Energy. It scans for nearby devices, prompts for a connection, then drops into an interactive REPL for device control.
 
-Whether you're looking to customize vibration patterns, adjust brightness levels, or monitor battery status, IQOS CLI provides an intuitive interface to unlock your device's full potential.
+## Features
 
-## ✨ Features
+- **Automatic Device Discovery** — Scans and connects to IQOS devices via Bluetooth
+- **Interactive Console** — REPL with command history (`iqos>` prompt)
+- **Battery Management** — Real-time battery status
+- **Brightness Control** — Set LED brightness (all ILUMA models)
+- **Vibration Customization** — Configure vibration for heating, puff-end, etc.
+- **FlexPuff** — Enable, disable, or check FlexPuff status (ILUMA i series)
+- **FlexBattery** — Performance/Eco mode and pause mode (ILUMA i / ILUMA i Prime)
+- **Smart Gesture** — Enable/disable smart gesture recognition (ILUMA i series)
+- **AutoStart** — Automatic heating start (ILUMA / ILUMA i)
+- **Device Lock/Unlock** — Lock and unlock the device
+- **Diagnosis** — Puff count, days used, battery voltage
+- **Find My IQOS** — Trigger device vibration for locating
 
-- 🔍 **Automatic Device Discovery** - Scans and detects IQOS devices automatically via Bluetooth
-- 🎮 **Interactive Console** - User-friendly command-line interface with command history
-- 🔋 **Battery Management** - Real-time battery status monitoring and power settings
-- 💡 **Brightness Control** - Adjust LED brightness levels (ILUMA models)
-- 📳 **Vibration Customization** - Configure vibration patterns for various device events
-- ⚡ **FlexPuff Support** - Manage flexible puff settings for personalized experience
-- 🔌 **FlexBattery Management** - Advanced battery optimization features
-- 🤖 **Smart Gesture Control** - Enable/disable smart gesture recognition
-- 🚀 **AutoStart Configuration** - Automatic heating start settings
-- 🔒 **Device Locking** - Secure your device with lock/unlock functionality
-- 📊 **Device Information** - View detailed device info (model, serial, firmware, etc.)
-- 🛡️ **Type-Safe API** - Leverages Rust's type system for safe BLE operations
+## Device Compatibility
 
-## 🔌 Device Compatibility
+| Feature | ILUMA i | ILUMA i One | ILUMA i Prime | ILUMA | ILUMA ONE | ILUMA Prime |
+|---------|:-------:|:-----------:|:-------------:|:-----:|:---------:|:-----------:|
+| Battery Status | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Device Info | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Diagnosis | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Find My IQOS | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Device Lock/Unlock | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Vibration Settings | ✅¹ | ✅ | ✅ | ✅¹ | ✅ | ✅ |
+| Brightness | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Auto Start | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Smart Gesture | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Flex Puff | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Flex Battery | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 
-| Feature | **IQOS ILUMA i** | **IQOS ILUMA i One** | **IQOS ILUMA i Prime** | **IQOS ILUMA** | **IQOS ILUMA ONE** | IQOS ILUMA Prime |
-|--------|--------|----------|------|-----|-----|-----|
-| Battery Status | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Device Info | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Device Lock/Unlock | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ | 
-| Vibration Settings | ✅ | ✅ | ❓ | ✅ | ❓ | ❓|
-| Brightness control | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Smart Gesture | ✅ |  ✅ | ❓ | ✅ | ❓ | ❓ |
-| Auto Start | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Flex Puff | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
-| Flex Battery | ✅ | ✅ | ❓ | ✅ | ❓ | ❓ |
+¹ The `charge` vibration flag is only available on ILUMA and ILUMA i (holder-based models with charge-start support).
 
-## 📋 Prerequisites
+## Prerequisites
 
-Before installing IQOS CLI, ensure you have the following:
-
-- **Rust 1.70 or later** - [Install Rust](https://rustup.rs/)
-- **Bluetooth Adapter** - A working Bluetooth adapter on your system
+- **Rust 1.70 or later** — [Install Rust](https://rustup.rs/)
+- **Bluetooth adapter** — A working Bluetooth adapter on your system
 - **Platform-specific dependencies**:
-  
-  **macOS:**
-  ```bash
-  # No additional dependencies required
-  ```
 
   **Linux:**
   ```bash
   sudo apt-get install libdbus-1-dev pkg-config
   ```
 
-  **Windows:**
-  ```bash
-  # No additional dependencies required
-  ```
+  **macOS / Windows:** No additional dependencies required.
 
-## 🛠️ Installation
+## Installation
 
-### From Source (Recommended)
+### From Source
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/iqos_cli.git
+git clone https://github.com/v-vx/iqos_cli.git
 cd iqos_cli
-
-# Build the project
 cargo build --release
-
-# The binary will be available at target/release/iqos_cli
 ./target/release/iqos_cli
 ```
 
-### Install via Cargo
+### Via Cargo
 
 ```bash
 cargo install --path .
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
-1. **Enable Bluetooth** on your system
-
-2. **Turn on your IQOS device** and ensure it's in range
-
-3. **Run IQOS CLI**:
+1. Enable Bluetooth on your system
+2. Turn on your IQOS device and ensure it's in range
+3. Run IQOS CLI:
    ```bash
-   cargo run --release
-   # or if installed
    iqos_cli
+   # or during development
+   cargo run --release
    ```
-
-4. **Connect to your device**:
+4. Select your device when prompted:
    ```
-   Found IQOS: IQOS_DEVICE_NAME (XX:XX:XX:XX:XX:XX)
-   Connect to IQOS_DEVICE_NAME (XX:XX:XX:XX:XX:XX)? [y/N]: y
+   Found IQOS: IQOS3_AABBCC (AA:BB:CC:DD:EE:FF)
+   Connect to IQOS3_AABBCC (AA:BB:CC:DD:EE:FF)? [y/N]: y
    ```
-
-5. **Start using commands** in the interactive console:
+5. Use commands in the interactive console:
    ```
    iqos> help
    iqos> battery
-   iqos> brightness
-    
-   Brightness Level: low
+   Battery Level: 85%
 
    iqos> brightness high
+   Brightness set to high
 
-   Brightness Level: high
-
-   iqos>
+   iqos> flexbattery eco
+   FlexBattery settings updated
    ```
 
-## 📚 Commands Reference
+## Commands Reference
 
-### General Commands
+### General
 
-| Command | Description | Example |
-|---------|-------------|---------|
-| `help` | Display all available commands | `help` |
-| `info` | Show device information (model, serial, firmware) | `info` |
-| `battery` | Display current battery status | `battery` |
-| `lock` | Lock the device | `lock` |
-| `unlock` | Unlock the device | `unlock` |
-| `exit` / `quit` | Exit the CLI | `exit` |
+| Command | Description |
+|---------|-------------|
+| `help` | List all available commands |
+| `info` | Show device model, serial number, and firmware version |
+| `battery` | Show current battery level |
+| `diagnosis` | Show puff count, days used, and battery voltage |
+| `lock` | Lock the device |
+| `unlock` | Unlock the device |
+| `findmyiqos` | Vibrate the device until Enter is pressed |
+| `exit` / `quit` | Exit the CLI |
 
 ### Display & Feedback
 
-| Command | Description | Example | Compatibility |
-|---------|-------------|---------|---------------|
-| `brightness <low/high>` | Set LED brightness (low/high) | `brightness high` | ILUMA, ILUMA i |
-| `vibration` | Configure vibration patterns | `vibration` | All models |
+| Command | Description | Compatibility |
+|---------|-------------|---------------|
+| `brightness` | Show current brightness level | All models |
+| `brightness <low\|high>` | Set LED brightness | All models |
+| `vibration` | Show current vibration settings | All models |
+| `vibration <flag> <on\|off> ...` | Set one or more vibration flags | All models |
+
+Vibration flags: `heating`, `starting`, `puffend`, `terminated`, `charge`¹
 
 ### Advanced Features
 
-| Command | Description | Example | Compatibility |
-|---------|-------------|---------|---------------|
-| `flexpuff <setting>` | Configure FlexPuff settings | `flexpuff enable` | ILUMA i |
-| `flexbattery <setting>` | Configure FlexBattery settings | `flexbattery on` | ILUMA, ILUMA i |
-| `smartgesture <on\|off>` | Enable/disable smart gestures | `smartgesture on` | ILUMA i |
-| `autostart <on\|off>` | Configure automatic heating start | `autostart on` | ILUMA, ILUMA i |
+| Command | Description | Compatibility |
+|---------|-------------|---------------|
+| `flexpuff <enable\|disable\|status>` | Manage FlexPuff | ILUMA i series |
+| `flexbattery` | Show FlexBattery mode and pause state | ILUMA i / i Prime |
+| `flexbattery <performance\|eco>` | Set battery mode | ILUMA i / i Prime |
+| `flexbattery pause <on\|off>` | Toggle pause mode | ILUMA i / i Prime |
+| `smartgesture <enable\|disable>` | Toggle Smart Gesture | ILUMA i series |
+| `autostart <on\|off>` | Toggle automatic heating start | ILUMA / ILUMA i |
 
-## 💡 Examples
+## Examples
 
-### Check Battery Status
-```bash
+### Battery & Diagnosis
+```
 iqos> battery
-
 Battery Level: 85%
 
+iqos> diagnosis
+Diagnosis:
+  Total puffs:     1234
+  Days used:       42
+  Battery voltage: 3.87V
 ```
 
-### Adjust Brightness
-```bash
+### Brightness
+```
+iqos> brightness
+Brightness: low
+
 iqos> brightness high
-Set to Brightness high
+Brightness set to high
 ```
 
-### Configure Vibration Pattern
-```bash
+### Vibration
+```
 iqos> vibration
-Select vibration event:
-1. Heating Start
-2. Ready to Use
-3. Battery Low
-Selection: 1
-Vibration pattern updated successfully
+VibrationSettings { heating_start: true, starting_to_use: true, puff_end: false, manually_terminated: false, charge_start: None }
+
+iqos> vibration heating on puffend off
+Vibration settings updated
 ```
 
-### Enable FlexBattery
-```bash
-iqos> flexbattery on
-FlexBattery enabled - Your device will optimize battery usage
+### FlexBattery
+```
+iqos> flexbattery
+FlexBattery: mode=Eco, pause=Some(false)
+
+iqos> flexbattery performance
+FlexBattery settings updated
+
+iqos> flexbattery pause on
+FlexBattery settings updated
 ```
 
-### View Device Information
-```bash
+### Device Information
+```
 iqos> info
-Device Model: IQOS ILUMA
+Device Model: IQOS ILUMA i
 Serial Number: XXXXXXXXXXXX
 Firmware Version: X.X.X
 Manufacturer: Philip Morris International
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Device Not Found
 
-**Problem:** CLI doesn't detect your IQOS device
-
-**Solutions:**
-- Ensure Bluetooth is enabled on your system
-- Make sure your IQOS device is turned on and in range
-- Restart your IQOS device
-- Try scanning again by restarting the CLI
+- Ensure Bluetooth is enabled
+- Make sure the IQOS device is powered on and in range
+- Restart the device or the CLI and try again
 
 ### Connection Failed
 
-**Problem:** Unable to connect to the device
-
-**Solutions:**
-- Ensure no other application is connected to your IQOS
-- Check if your device needs to be unpaired and re-paired
-- Restart both your computer's Bluetooth and the IQOS device
-- Make sure you have proper Bluetooth permissions
+- Ensure no other application (e.g. IQOS app) is connected to the device
+- Restart the device's Bluetooth and try again
+- On macOS, check Bluetooth permissions for the terminal
 
 ### Permission Denied (Linux)
 
-**Problem:** Bluetooth access denied
-
-**Solution:**
 ```bash
-# Add your user to the bluetooth group
 sudo usermod -a -G bluetooth $USER
 # Log out and log back in
 ```
 
 ### Command Not Available
 
-**Problem:** Specific command doesn't work
+- Check the compatibility table — some features are model-specific
+- Run `info` to verify the connected device model
 
-**Solutions:**
-- Check device compatibility - some features are model-specific
-- Ensure your device firmware is up to date
-- Verify you're connected to the device with `info` command
-
-## 🛠️ Development
+## Development
 
 ### Project Structure
 
 ```
 iqos_cli/
 ├── src/
-│   ├── main.rs              # Entry point and device discovery
-│   ├── iqos/                # Core IQOS device implementation
-│   │   ├── mod.rs           # Module definitions and constants
-│   │   ├── builder.rs       # Device builder pattern
-│   │   ├── device.rs        # Device trait implementations
-│   │   ├── iqos.rs          # Main IQOS BLE interface
-│   │   ├── iluma.rs         # ILUMA specific implementation
-│   │   ├── iluma_i.rs       # ILUMA i specific implementation
-│   │   ├── brightness/      # Brightness control
-│   │   ├── vibration/       # Vibration settings
-│   │   ├── flexbattery/     # FlexBattery features
-│   │   └── flexpuff/        # FlexPuff features
+│   ├── main.rs              # Entry point and BLE device discovery
 │   └── loader/              # CLI interface
-│       ├── mod.rs           # Console runner
-│       ├── parser.rs        # Command parser
-│       └── cmds/            # Command implementations
-├── Cargo.toml               # Project dependencies
-└── README.md                # This file
+│       ├── mod.rs           # Console runner (run_console)
+│       ├── parser.rs        # IQOSConsole REPL and command dispatch
+│       ├── compat.rs        # Device capability workarounds
+│       └── cmds/            # Per-command implementations
+├── Cargo.toml
+└── README.md
 ```
 
-### Building from Source
+### Build Commands
 
 ```bash
-# Debug build
-cargo build
-
-# Release build (optimized)
-cargo build --release
-
-# Run tests
-cargo test
-
-# Generate documentation
-cargo doc --open
-
-# Check code without building
-cargo check
+cargo build            # Debug build
+cargo build --release  # Optimized build
+cargo test             # Run tests
+cargo fmt              # Format code
+cargo clippy -- -D warnings  # Lint
+cargo check            # Fast type-check without linking
 ```
 
-### Running Tests
+## Contributing
 
-```bash
-# Run all tests
-cargo test
-
-# Run tests with output
-cargo test -- --nocapture
-
-# Run specific test module
-cargo test iqos::tests
-```
-
-### Code Style
-
-This project follows Rust's official style guidelines and uses:
-- `rustfmt` for code formatting
-- `clippy` for linting
-
-```bash
-# Format code
-cargo fmt
-
-# Run clippy
-cargo clippy -- -D warnings
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Here's how you can help:
-
-1. **Fork the repository**
-2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
-3. **Make your changes**
-   - Follow the project's coding guidelines
-   - Add tests for new features
-   - Update documentation as needed
-4. **Commit your changes** (`git commit -m 'Add amazing feature'`)
-5. **Push to the branch** (`git push origin feature/amazing-feature`)
-6. **Open a Pull Request**
-
-### Development Guidelines
-
-- Write clean, idiomatic Rust code
-- Follow the existing code structure and patterns
-- Add comprehensive tests for new features
-- Update documentation for user-facing changes
-- Use meaningful commit messages
-- Ensure all tests pass before submitting PR
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Add tests for new functionality
+4. Ensure all tests pass and `cargo clippy` is clean
+5. Open a Pull Request
 
 ### Reporting Bugs
 
-Found a bug? Please open an issue with:
+Open an issue with:
 - Clear description of the problem
 - Steps to reproduce
 - Expected vs actual behavior
-- Your environment (OS, Rust version, device model)
-- Relevant logs or error messages
+- OS, Rust version, and IQOS device model
 
-## 📄 License
+## License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+GNU General Public License v3.0 — see [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- Built with [btleplug](https://github.com/deviceplug/btleplug) - Rust Bluetooth Low Energy library
-- Inspired by the Rust community's commitment to safe and efficient systems programming
-- Thanks to all contributors who help improve this project
-
-## 📞 Support
-
-- **Issues:** [GitHub Issues](https://github.com/yourusername/iqos_cli/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/iqos_cli/discussions)
+Built with [btleplug](https://github.com/deviceplug/btleplug) for Bluetooth Low Energy support.
 
 ---
 
 <div align="center">
 
-**Made with ❤️ and 🦀 Rust**
-
-⭐ Star this repo if you find it useful!
+**Issues:** [github.com/v-vx/iqos_cli/issues](https://github.com/v-vx/iqos_cli/issues)
 
 </div>
