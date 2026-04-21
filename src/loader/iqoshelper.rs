@@ -10,7 +10,6 @@ const COMMANDS: &[&str] = &[
     "autostart",
     "battery",
     "brightness",
-    "device-status",
     "diagnosis",
     "exit",
     "findmyiqos",
@@ -179,11 +178,11 @@ mod tests {
     }
 
     #[test]
-    fn completes_device_status_command() {
+    fn does_not_complete_removed_device_status_command() {
         let (start, candidates) = complete("device");
 
         assert_eq!(start, 0);
-        assert_eq!(candidates, vec!["device-status"]);
+        assert!(candidates.is_empty());
     }
 
     #[test]

@@ -94,7 +94,6 @@ fn register_all_commands(console: &mut IQOSConsole) {
     crate::loader::cmds::help::register_command(console);
     crate::loader::cmds::battery::register_command(console);
     crate::loader::cmds::info::register_command(console);
-    crate::loader::cmds::device_status::register_command(console);
     crate::loader::cmds::lock::register_command(console);
     crate::loader::cmds::unlock::register_command(console);
     crate::loader::cmds::findmyiqos::register_command(console);

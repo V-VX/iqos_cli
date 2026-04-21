@@ -21,7 +21,6 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
     let model = iqos.transport().model();
     println!("Available commands:");
     println!("  battery            Display battery level");
-    println!("  device-status      Display firmware and voltage snapshot");
     println!("  findmyiqos         Activate find-my-device vibration");
     if model.supports(DeviceCapability::DeviceLock) {
         println!("  lock | unlock      Lock or unlock the device");
@@ -54,7 +53,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
     if supports_flexbattery(model) {
         println!("  flexbattery [performance|eco|pause on|off]");
     }
-    println!("\n  info               Device information");
+    println!("\n  info               Device metadata, firmware, and voltage snapshot");
     println!("  help               This help");
     println!("  quit | exit        Exit");
     Ok(())

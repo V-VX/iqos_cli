@@ -137,8 +137,7 @@ cargo install --path .
 | Command | Description |
 |---------|-------------|
 | `help` | List all available commands |
-| `info` | Show device model, serial number, and GATT metadata |
-| `device-status` | Show firmware, product number, and battery voltage snapshot |
+| `info` | Show device model, serial number, GATT metadata, firmware, product number, and battery voltage |
 | `battery` | Show current battery level |
 | `diagnosis` | Show puff count, days used, and battery voltage |
 | `lock` | Lock the device |
@@ -215,10 +214,17 @@ FlexBattery settings updated
 ### Device Information
 ```
 iqos> info
-Device Model: IQOS ILUMA i
-Serial Number: XXXXXXXXXXXX
-Firmware Version: X.X.X
-Manufacturer: Philip Morris International
+Device Information:
+  Model:           IlumaI
+  Model number:    A123
+  Serial number:   XXXXXXXXXXXX
+  Manufacturer:    Philip Morris International
+  Software rev:    X.X.X
+  Product number:  XXXXXXXXXXXX
+  Stick firmware:  v1.2.3.24
+  Holder product:  XXXXXXXXXXXX
+  Holder firmware: v1.2.3.24
+  Battery voltage: 3.870V
 ```
 
 ## Troubleshooting
