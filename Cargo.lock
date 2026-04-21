@@ -407,9 +407,9 @@ checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 
 [[package]]
 name = "iqos"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "555640d46271de59661cd847b80c5b305ce6269c6fd85d7cbf8089b446352b76"
+checksum = "088fc05ea1415a3d168963711e6169c781b1a27c5bc275eb4ccad1975ae138d6"
 dependencies = [
  "async-trait",
  "btleplug",

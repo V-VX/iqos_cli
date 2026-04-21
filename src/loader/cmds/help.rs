@@ -26,7 +26,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
         println!("  lock | unlock      Lock or unlock the device");
     }
     if model.supports(DeviceCapability::AutoStart) {
-        println!("  autostart [on|off] Configure auto-start");
+        println!("  autostart [on|off|status] Configure auto-start");
     }
     println!("  diagnosis          Retrieve telemetry data");
     let has_device_commands = supports_brightness(model)
@@ -53,7 +53,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
     if supports_flexbattery(model) {
         println!("  flexbattery [performance|eco|pause on|off]");
     }
-    println!("\n  info               Device information");
+    println!("\n  info               Device metadata, firmware, and voltage snapshot");
     println!("  help               This help");
     println!("  quit | exit        Exit");
     Ok(())

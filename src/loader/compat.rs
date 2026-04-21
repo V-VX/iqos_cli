@@ -1,27 +1,23 @@
-use iqos::DeviceModel;
+// Keep CLI feature gates aligned with the iqos crate. The command handlers call
+// crate APIs that enforce the same matrix, so divergence would produce commands
+// that appear available but fail after dispatch.
+
+use iqos::{DeviceCapability, DeviceModel};
 
 pub const fn supports_brightness(model: DeviceModel) -> bool {
-    matches!(
-        model,
-        DeviceModel::IlumaOne
-            | DeviceModel::Iluma
-            | DeviceModel::IlumaPrime
-            | DeviceModel::IlumaIOne
-            | DeviceModel::IlumaI
-            | DeviceModel::IlumaIPrime
-    )
+    model.supports(DeviceCapability::Brightness)
 }
 
 pub const fn supports_flexbattery(model: DeviceModel) -> bool {
-    matches!(model, DeviceModel::IlumaI | DeviceModel::IlumaIPrime)
+    model.supports(DeviceCapability::FlexBattery)
 }
 
 pub const fn supports_flexpuff(model: DeviceModel) -> bool {
-    model.is_iluma_i_family()
+    model.supports(DeviceCapability::FlexPuff)
 }
 
 pub const fn supports_smartgesture(model: DeviceModel) -> bool {
-    model.is_iluma_i_family()
+    model.supports(DeviceCapability::SmartGesture)
 }
 
 #[cfg(test)]
@@ -45,25 +41,43 @@ mod tests {
     }
 
     #[test]
-    fn flexbattery_supports_iluma_i_holder_models() {
+    fn flexbattery_supports_iluma_i_holder_models_only() {
         assert!(supports_flexbattery(DeviceModel::IlumaI));
         assert!(supports_flexbattery(DeviceModel::IlumaIPrime));
         assert!(!supports_flexbattery(DeviceModel::IlumaIOne));
         assert!(!supports_flexbattery(DeviceModel::Iluma));
+        assert!(!supports_flexbattery(DeviceModel::IlumaPrime));
     }
 
     #[test]
-    fn flexpuff_and_smartgesture_support_iluma_i_series() {
+    fn flexpuff_requires_iluma_i_holder_models() {
+        for model in [DeviceModel::IlumaI, DeviceModel::IlumaIPrime] {
+            assert!(supports_flexpuff(model), "{model:?}");
+        }
+
         for model in [
+            DeviceModel::Iluma,
+            DeviceModel::IlumaPrime,
+            DeviceModel::IlumaOne,
             DeviceModel::IlumaIOne,
+        ] {
+            assert!(!supports_flexpuff(model), "{model:?}");
+        }
+    }
+
+    #[test]
+    fn smartgesture_supports_holder_models() {
+        for model in [
+            DeviceModel::Iluma,
+            DeviceModel::IlumaPrime,
             DeviceModel::IlumaI,
             DeviceModel::IlumaIPrime,
         ] {
-            assert!(supports_flexpuff(model), "{model:?}");
             assert!(supports_smartgesture(model), "{model:?}");
         }
 
-        assert!(!supports_flexpuff(DeviceModel::Iluma));
-        assert!(!supports_smartgesture(DeviceModel::Iluma));
+        for model in [DeviceModel::IlumaOne, DeviceModel::IlumaIOne] {
+            assert!(!supports_smartgesture(model), "{model:?}");
+        }
     }
 }

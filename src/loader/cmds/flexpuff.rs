@@ -24,23 +24,25 @@ enum FlexPuffAction {
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
     let action = parse_action(&args)?;
     let iqos = iqos.lock().await;
+    let model = iqos.transport().model();
 
-    if !supports_flexpuff(iqos.transport().model()) {
+    if !supports_flexpuff(model) {
         println!("FlexPuff is only available on ILUMA i series devices");
         return Ok(());
     }
 
     match action {
         FlexPuffAction::Enable => {
-            iqos.set_flexpuff(FlexPuffSetting::new(true)).await?;
+            iqos.set_flexpuff(model, FlexPuffSetting::new(true)).await?;
             println!("FlexPuff enabled");
         }
         FlexPuffAction::Disable => {
-            iqos.set_flexpuff(FlexPuffSetting::new(false)).await?;
+            iqos.set_flexpuff(model, FlexPuffSetting::new(false))
+                .await?;
             println!("FlexPuff disabled");
         }
         FlexPuffAction::Status => {
-            let s = iqos.read_flexpuff().await?;
+            let s = iqos.read_flexpuff(model).await?;
             println!(
                 "FlexPuff: {}",
                 if s.is_enabled() {

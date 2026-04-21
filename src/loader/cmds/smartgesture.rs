@@ -26,7 +26,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let model = iqos.transport().model();
 
     if !supports_smartgesture(model) {
-        println!("SmartGesture is only available on ILUMA i series devices");
+        println!("SmartGesture is only available on ILUMA holder models");
         return Ok(());
     }
 
