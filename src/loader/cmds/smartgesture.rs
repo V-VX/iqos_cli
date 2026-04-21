@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Result};
-use iqos::protocol::smartgesture_command;
 use iqos::{Iqos, IqosBle};
 use tokio::sync::Mutex;
 
@@ -33,11 +32,11 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
 
     match action {
         SmartGestureAction::Enable => {
-            iqos.transport().send(smartgesture_command(true)).await?;
+            iqos.set_smartgesture(model, true).await?;
             println!("Smart Gesture enabled");
         }
         SmartGestureAction::Disable => {
-            iqos.transport().send(smartgesture_command(false)).await?;
+            iqos.set_smartgesture(model, false).await?;
             println!("Smart Gesture disabled");
         }
     }
