@@ -22,15 +22,19 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         return Ok(());
     }
 
-    let settings = match args.get(1).map(String::as_str) {
+    let cmd = args.get(1).map(|s| s.to_ascii_lowercase());
+    let settings = match cmd.as_deref() {
         None => {
             let s = iqos.read_flexbattery(model).await?;
             println!("FlexBattery: mode={:?}, pause={:?}", s.mode(), s.pause_mode());
             return Ok(());
         }
         Some("pause") => {
-            let pause = parse_on_off(args.get(2).map(String::as_str))?;
-            // Read current mode so toggling pause doesn't overwrite it.
+            let value = args.get(2).map(|s| s.to_ascii_lowercase());
+            if value.is_none() {
+                bail!("Usage: flexbattery pause [on|off]");
+            }
+            let pause = parse_on_off(value.as_deref())?;
             let current = iqos.read_flexbattery(model).await?;
             FlexBatterySettings::new(current.mode(), pause)
         }

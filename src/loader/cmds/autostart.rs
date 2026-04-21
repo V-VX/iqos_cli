@@ -17,7 +17,8 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let iqos = iqos.lock().await;
     let model = iqos.transport().model();
 
-    match args.get(1).map(String::as_str) {
+    let arg = args.get(1).map(|s| s.to_ascii_lowercase());
+    match arg.as_deref() {
         Some("on") | Some("enable") => {
             iqos.set_autostart(model, true).await?;
             println!("Autostart enabled");
