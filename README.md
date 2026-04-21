@@ -47,7 +47,7 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 - **Vibration Customization** — Configure vibration for heating, puff-end, etc.
 - **FlexPuff** — Enable, disable, or check FlexPuff status (ILUMA i / ILUMA i Prime)
 - **FlexBattery** — Performance/Eco mode and pause mode (ILUMA i / ILUMA i Prime)
-- **Smart Gesture** — Enable/disable smart gesture recognition (holder models)
+- **Smart Gesture** — Enable/disable smart gesture recognition (ILUMA / ILUMA Prime / ILUMA i / ILUMA i Prime)
 - **AutoStart** — Automatic heating start (holder models)
 - **Device Lock/Unlock** — Lock and unlock the device
 - **Diagnosis** — Puff count, days used, battery voltage
@@ -165,7 +165,7 @@ Vibration flags: `heating`, `starting`, `puffend`, `terminated`, `charge`¹
 | `flexbattery` | Show FlexBattery mode and pause state | ILUMA i / i Prime |
 | `flexbattery <performance\|eco>` | Set battery mode | ILUMA i / i Prime |
 | `flexbattery pause <on\|off>` | Toggle pause mode | ILUMA i / i Prime |
-| `smartgesture <enable\|disable>` | Toggle Smart Gesture | Holder models |
+| `smartgesture <enable\|disable>` | Toggle Smart Gesture | ILUMA / ILUMA Prime / ILUMA i / i Prime |
 | `autostart <on\|off\|status>` | Show or toggle automatic heating start | Holder models |
 
 ## Examples

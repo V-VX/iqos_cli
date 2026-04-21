@@ -50,7 +50,7 @@ mod tests {
     }
 
     #[test]
-    fn flexpuff_and_smartgesture_require_iluma_i_gesture_sensor() {
+    fn flexpuff_requires_iluma_i_holder_models() {
         for model in [DeviceModel::IlumaI, DeviceModel::IlumaIPrime] {
             assert!(supports_flexpuff(model), "{model:?}");
         }
@@ -63,7 +63,10 @@ mod tests {
         ] {
             assert!(!supports_flexpuff(model), "{model:?}");
         }
+    }
 
+    #[test]
+    fn smartgesture_supports_holder_models() {
         for model in [
             DeviceModel::Iluma,
             DeviceModel::IlumaPrime,
