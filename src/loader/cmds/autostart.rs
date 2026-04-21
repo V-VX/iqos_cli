@@ -36,7 +36,10 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         }
         AutostartAction::Status => {
             let enabled = iqos.read_autostart(model).await?;
-            println!("Autostart: {}", if enabled { "enabled" } else { "disabled" });
+            println!(
+                "Autostart: {}",
+                if enabled { "enabled" } else { "disabled" }
+            );
         }
     }
 
@@ -45,10 +48,14 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
 
 fn parse_action(args: &[String]) -> Result<AutostartAction> {
     match args.get(1).map(String::as_str) {
-        None | Some("status") => Ok(AutostartAction::Status),
-        Some("on") | Some("enable") => Ok(AutostartAction::Enable),
-        Some("off") | Some("disable") => Ok(AutostartAction::Disable),
-        Some(opt) => bail!("Invalid option: {opt}. Use enable/disable/status"),
+        None => Ok(AutostartAction::Status),
+        Some("status") if args.len() == 2 => Ok(AutostartAction::Status),
+        Some("on") | Some("enable") if args.len() == 2 => Ok(AutostartAction::Enable),
+        Some("off") | Some("disable") if args.len() == 2 => Ok(AutostartAction::Disable),
+        Some(_) if args.len() > 2 => bail!("Usage: autostart [enable|on|disable|off|status]"),
+        Some(opt) => {
+            bail!("Invalid option: {opt}. Use enable/on, disable/off, or status (default)")
+        }
     }
 }
 
@@ -62,8 +69,14 @@ mod tests {
 
     #[test]
     fn parses_enable() {
-        assert_eq!(parse_action(&args(&["autostart", "enable"])).unwrap(), AutostartAction::Enable);
-        assert_eq!(parse_action(&args(&["autostart", "on"])).unwrap(), AutostartAction::Enable);
+        assert_eq!(
+            parse_action(&args(&["autostart", "enable"])).unwrap(),
+            AutostartAction::Enable
+        );
+        assert_eq!(
+            parse_action(&args(&["autostart", "on"])).unwrap(),
+            AutostartAction::Enable
+        );
     }
 
     #[test]
@@ -72,13 +85,29 @@ mod tests {
             parse_action(&args(&["autostart", "disable"])).unwrap(),
             AutostartAction::Disable
         );
-        assert_eq!(parse_action(&args(&["autostart", "off"])).unwrap(), AutostartAction::Disable);
+        assert_eq!(
+            parse_action(&args(&["autostart", "off"])).unwrap(),
+            AutostartAction::Disable
+        );
     }
 
     #[test]
     fn parses_status() {
-        assert_eq!(parse_action(&args(&["autostart", "status"])).unwrap(), AutostartAction::Status);
-        assert_eq!(parse_action(&args(&["autostart"])).unwrap(), AutostartAction::Status);
+        assert_eq!(
+            parse_action(&args(&["autostart", "status"])).unwrap(),
+            AutostartAction::Status
+        );
+        assert_eq!(
+            parse_action(&args(&["autostart"])).unwrap(),
+            AutostartAction::Status
+        );
+    }
+
+    #[test]
+    fn rejects_trailing_args() {
+        assert!(parse_action(&args(&["autostart", "enable", "typo"])).is_err());
+        assert!(parse_action(&args(&["autostart", "disable", "typo"])).is_err());
+        assert!(parse_action(&args(&["autostart", "status", "typo"])).is_err());
     }
 
     #[test]

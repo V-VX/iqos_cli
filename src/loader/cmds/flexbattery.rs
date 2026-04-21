@@ -27,7 +27,11 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let settings = match cmd.as_deref() {
         None => {
             let s = iqos.read_flexbattery(model).await?;
-            println!("FlexBattery: mode={:?}, pause={:?}", s.mode(), s.pause_mode());
+            println!(
+                "FlexBattery: mode={:?}, pause={:?}",
+                s.mode(),
+                s.pause_mode()
+            );
             return Ok(());
         }
         Some("pause") => {

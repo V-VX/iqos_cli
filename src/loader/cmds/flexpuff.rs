@@ -37,7 +37,8 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
             println!("FlexPuff enabled");
         }
         FlexPuffAction::Disable => {
-            iqos.set_flexpuff(model, FlexPuffSetting::new(false)).await?;
+            iqos.set_flexpuff(model, FlexPuffSetting::new(false))
+                .await?;
             println!("FlexPuff disabled");
         }
         FlexPuffAction::Status => {

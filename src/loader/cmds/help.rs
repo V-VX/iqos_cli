@@ -21,12 +21,13 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
     let model = iqos.transport().model();
     println!("Available commands:");
     println!("  battery            Display battery level");
+    println!("  device-status      Display firmware and voltage snapshot");
     println!("  findmyiqos         Activate find-my-device vibration");
     if model.supports(DeviceCapability::DeviceLock) {
         println!("  lock | unlock      Lock or unlock the device");
     }
     if model.supports(DeviceCapability::AutoStart) {
-        println!("  autostart [on|off] Configure auto-start");
+        println!("  autostart [on|off|status] Configure auto-start");
     }
     println!("  diagnosis          Retrieve telemetry data");
     let has_device_commands = supports_brightness(model)

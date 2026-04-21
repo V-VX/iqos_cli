@@ -10,6 +10,7 @@ const COMMANDS: &[&str] = &[
     "autostart",
     "battery",
     "brightness",
+    "device-status",
     "diagnosis",
     "exit",
     "findmyiqos",
@@ -23,7 +24,7 @@ const COMMANDS: &[&str] = &[
     "unlock",
     "vibration",
 ];
-const AUTOSTART_ARGS: &[&str] = &["on", "off", "enable", "disable"];
+const AUTOSTART_ARGS: &[&str] = &["on", "off", "enable", "disable", "status"];
 const BRIGHTNESS_ARGS: &[&str] = &["high", "low"];
 const FLEXBATTERY_ARGS: &[&str] = &["performance", "eco", "pause"];
 const FLEXPUFF_ARGS: &[&str] = &["enable", "disable", "status"];
@@ -175,6 +176,14 @@ mod tests {
 
         assert_eq!(start, 0);
         assert_eq!(candidates, vec!["flexbattery", "flexpuff"]);
+    }
+
+    #[test]
+    fn completes_device_status_command() {
+        let (start, candidates) = complete("device");
+
+        assert_eq!(start, 0);
+        assert_eq!(candidates, vec!["device-status"]);
     }
 
     #[test]

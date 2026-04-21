@@ -45,12 +45,13 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 - **Battery Management** — Real-time battery status
 - **Brightness Control** — Set LED brightness (all ILUMA models)
 - **Vibration Customization** — Configure vibration for heating, puff-end, etc.
-- **FlexPuff** — Enable, disable, or check FlexPuff status (ILUMA i series)
+- **FlexPuff** — Enable, disable, or check FlexPuff status (ILUMA i / ILUMA i Prime)
 - **FlexBattery** — Performance/Eco mode and pause mode (ILUMA i / ILUMA i Prime)
-- **Smart Gesture** — Enable/disable smart gesture recognition (ILUMA i series)
-- **AutoStart** — Automatic heating start (ILUMA / ILUMA i)
+- **Smart Gesture** — Enable/disable smart gesture recognition (holder models)
+- **AutoStart** — Automatic heating start (holder models)
 - **Device Lock/Unlock** — Lock and unlock the device
 - **Diagnosis** — Puff count, days used, battery voltage
+- **Device Status** — Firmware, product number, and voltage snapshot
 - **Find My IQOS** — Trigger device vibration for locating
 
 ## Device Compatibility
@@ -64,9 +65,9 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 | Device Lock/Unlock | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Vibration Settings | ✅¹ | ✅ | ✅ | ✅¹ | ✅ | ✅ |
 | Brightness | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Auto Start | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Smart Gesture | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Flex Puff | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Auto Start | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ |
+| Smart Gesture | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ |
+| Flex Puff | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Flex Battery | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 
 ¹ The `charge` vibration flag is only available on ILUMA and ILUMA i (holder-based models with charge-start support).
@@ -136,7 +137,8 @@ cargo install --path .
 | Command | Description |
 |---------|-------------|
 | `help` | List all available commands |
-| `info` | Show device model, serial number, and firmware version |
+| `info` | Show device model, serial number, and GATT metadata |
+| `device-status` | Show firmware, product number, and battery voltage snapshot |
 | `battery` | Show current battery level |
 | `diagnosis` | Show puff count, days used, and battery voltage |
 | `lock` | Lock the device |
@@ -159,12 +161,12 @@ Vibration flags: `heating`, `starting`, `puffend`, `terminated`, `charge`¹
 
 | Command | Description | Compatibility |
 |---------|-------------|---------------|
-| `flexpuff <enable\|disable\|status>` | Manage FlexPuff | ILUMA i series |
+| `flexpuff <enable\|disable\|status>` | Manage FlexPuff | ILUMA i / i Prime |
 | `flexbattery` | Show FlexBattery mode and pause state | ILUMA i / i Prime |
 | `flexbattery <performance\|eco>` | Set battery mode | ILUMA i / i Prime |
 | `flexbattery pause <on\|off>` | Toggle pause mode | ILUMA i / i Prime |
-| `smartgesture <enable\|disable>` | Toggle Smart Gesture | ILUMA i series |
-| `autostart <on\|off>` | Toggle automatic heating start | ILUMA / ILUMA i |
+| `smartgesture <enable\|disable>` | Toggle Smart Gesture | Holder models |
+| `autostart <on\|off\|status>` | Show or toggle automatic heating start | Holder models |
 
 ## Examples
 

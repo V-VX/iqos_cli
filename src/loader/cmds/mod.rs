@@ -2,6 +2,7 @@ pub mod autostart;
 pub mod battery;
 pub mod brightness;
 pub mod command;
+pub mod device_status;
 pub mod diagnosis;
 pub mod findmyiqos;
 pub mod flexbattery;
