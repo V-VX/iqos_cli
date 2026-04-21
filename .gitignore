@@ -3,7 +3,6 @@
 *.log
 copilot-instructions.md
 CLAUDE.md
-Cargo.lock
 
 # AI agent / assistant config
 .agent/
