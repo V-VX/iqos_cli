@@ -1,10 +1,14 @@
-pub mod command;
-pub mod flexpuff;
-pub mod flexbattery;
-pub mod brightness;
-pub mod vibration;
 pub mod autostart;
-pub mod smartgesture;
+pub mod battery;
+pub mod brightness;
+pub mod command;
 pub mod diagnosis;
-
-// Add more command modules here as needed
+pub mod findmyiqos;
+pub mod flexbattery;
+pub mod flexpuff;
+pub mod help;
+pub mod info;
+pub mod lock;
+pub mod smartgesture;
+pub mod unlock;
+pub mod vibration;

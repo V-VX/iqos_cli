@@ -1,3 +1,17 @@
 /target
 *.txt
+*.log
 copilot-instructions.md
+CLAUDE.md
+
+# AI agent / assistant config
+.agent/
+.serena/
+.claude/
+.copilot/
+SKILL.md
+
+# Scratch / local files
+1cargo
+examples/
+export.txt

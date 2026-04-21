@@ -1,95 +1,123 @@
 use std::sync::Arc;
-use anyhow::Result;
+
+use anyhow::{bail, Result};
+use iqos::{FlexPuffSetting, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::iqos::IqosBle;
-use crate::iqos::device::IqosIluma;
-use crate::iqos::flexpuff::Flexpuff;
+use crate::loader::compat::supports_flexpuff;
 use crate::loader::parser::IQOSConsole;
 
-use super::command::{CommandRegistry, CommandInfo};
-
-/// Get information about the flexpuff command
-pub fn command_info() -> CommandInfo {
-    CommandInfo::new(
+pub fn register_command(console: &mut IQOSConsole) {
+    console.register_command(
         "flexpuff",
-        "Configure FlexPuff feature",
-        "Usage: flexpuff [status|enable|disable]",
-        true,  // Requires ILUMA model
-        false, // Does not require ILUMA-i model
-    )
+        Box::new(|iqos, args| Box::pin(async move { execute(iqos, args).await })),
+    );
 }
 
-/// Register the flexpuff command
-pub async fn register_command(console: &IQOSConsole) {
-    console.register_command("flexpuff", Box::new(|iqos, args| {
-        Box::pin(async move {
-            execute_command(iqos, args).await
-        })
-    })).await;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FlexPuffAction {
+    Enable,
+    Disable,
+    Status,
 }
 
-/// Execute the flexpuff command
-async fn execute_command(iqos: Arc<Mutex<IqosBle>>, args: Vec<String>) -> Result<()> {
+async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
+    let action = parse_action(&args)?;
     let iqos = iqos.lock().await;
-    
-    // Check if device is ILUMA
-    if !iqos.is_iluma_or_higher() {
-        println!("FlexPuff is only available on ILUMA devices.");
+
+    if !supports_flexpuff(iqos.transport().model()) {
+        println!("FlexPuff is only available on ILUMA i series devices");
         return Ok(());
     }
-    
-    match args.get(1).map(|s| s.as_str()) {
-        Some("status") => handle_status(&iqos).await,
-        Some("enable") => handle_enable(&iqos).await,
-        Some("disable") => handle_disable(&iqos).await,
-        Some(opt) => {
-            println!("Invalid option: {}. Please specify 'enable' or 'disable'", opt);
-            Ok(())
-        },
-        None => {
-            println!("Usage: flexpuff [status|enable|disable]");
-            Ok(())
+
+    match action {
+        FlexPuffAction::Enable => {
+            iqos.set_flexpuff(FlexPuffSetting::new(true)).await?;
+            println!("FlexPuff enabled");
+        }
+        FlexPuffAction::Disable => {
+            iqos.set_flexpuff(FlexPuffSetting::new(false)).await?;
+            println!("FlexPuff disabled");
+        }
+        FlexPuffAction::Status => {
+            let s = iqos.read_flexpuff().await?;
+            println!(
+                "FlexPuff: {}",
+                if s.is_enabled() {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            );
         }
     }
-}
 
-/// Handle the status subcommand
-async fn handle_status(iqos: &IqosBle) -> Result<()> {
-    // Need to handle this as an IqosIluma trait
-    if let Some(iluma) = iqos.as_iluma() {
-        let status = iluma.load_flexpuff().await?;
-        println!("\nFlexpuff status: {}\n", status);
-    } else {
-        println!("This device is not an ILUMA model");
-    }
     Ok(())
 }
 
-/// Handle the enable subcommand
-async fn handle_enable(iqos: &IqosBle) -> Result<()> {
-    let flexpuff = Flexpuff::new(true);
-    if let Some(iluma) = iqos.as_iluma() {
-        match iluma.update_flexpuff(flexpuff).await {
-            Ok(_) => println!("Flexpuff enabled"),
-            Err(e) => println!("Error: {}", e),
-        }
-    } else {
-        println!("This device is not an ILUMA model");
+fn parse_action(args: &[String]) -> Result<FlexPuffAction> {
+    match args.get(1).map(String::as_str) {
+        None if args.len() == 1 => Ok(FlexPuffAction::Status),
+        Some("enable") if args.len() == 2 => Ok(FlexPuffAction::Enable),
+        Some("enable") => bail!("Usage: flexpuff enable"),
+        Some("disable") if args.len() == 2 => Ok(FlexPuffAction::Disable),
+        Some("disable") => bail!("Usage: flexpuff disable"),
+        Some("status") if args.len() == 2 => Ok(FlexPuffAction::Status),
+        Some("status") => bail!("Usage: flexpuff status"),
+        Some(opt) => bail!("Invalid option: {opt}. Use enable/disable/status"),
+        None => bail!("Usage: flexpuff [enable|disable|status]"),
     }
-    Ok(())
 }
 
-/// Handle the disable subcommand
-async fn handle_disable(iqos: &IqosBle) -> Result<()> {
-    let flexpuff = Flexpuff::new(false);
-    if let Some(iluma) = iqos.as_iluma() {
-        match iluma.update_flexpuff(flexpuff).await {
-            Ok(_) => println!("Flexpuff disabled"),
-            Err(e) => println!("Error: {}", e),
-        }
-    } else {
-        println!("This device is not an ILUMA model");
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(parts: &[&str]) -> Vec<String> {
+        parts.iter().map(|part| (*part).to_owned()).collect()
     }
-    Ok(())
+
+    #[test]
+    fn parses_enable() {
+        assert_eq!(
+            parse_action(&args(&["flexpuff", "enable"])).unwrap(),
+            FlexPuffAction::Enable
+        );
+    }
+
+    #[test]
+    fn parses_disable() {
+        assert_eq!(
+            parse_action(&args(&["flexpuff", "disable"])).unwrap(),
+            FlexPuffAction::Disable
+        );
+    }
+
+    #[test]
+    fn parses_status_subcommand() {
+        assert_eq!(
+            parse_action(&args(&["flexpuff", "status"])).unwrap(),
+            FlexPuffAction::Status
+        );
+    }
+
+    #[test]
+    fn parses_default_status() {
+        assert_eq!(
+            parse_action(&args(&["flexpuff"])).unwrap(),
+            FlexPuffAction::Status
+        );
+    }
+
+    #[test]
+    fn rejects_trailing_args() {
+        assert!(parse_action(&args(&["flexpuff", "enable", "typo"])).is_err());
+        assert!(parse_action(&args(&["flexpuff", "disable", "typo"])).is_err());
+        assert!(parse_action(&args(&["flexpuff", "status", "typo"])).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_subcommand() {
+        assert!(parse_action(&args(&["flexpuff", "invalid"])).is_err());
+    }
 }

@@ -1,35 +1,59 @@
 use rustyline::completion::{Completer, Pair};
+use rustyline::error::ReadlineError;
+use rustyline::highlight::{Highlighter, MatchingBracketHighlighter};
 use rustyline::hint::{Hinter, HistoryHinter};
 use rustyline::validate::Validator;
-use rustyline::highlight::{Highlighter, MatchingBracketHighlighter};
 use rustyline::Context;
 use rustyline::Helper;
-use rustyline::error::ReadlineError;
+
+const COMMANDS: &[&str] = &[
+    "autostart",
+    "battery",
+    "brightness",
+    "diagnosis",
+    "exit",
+    "findmyiqos",
+    "flexbattery",
+    "flexpuff",
+    "help",
+    "info",
+    "lock",
+    "quit",
+    "smartgesture",
+    "unlock",
+    "vibration",
+];
+const AUTOSTART_ARGS: &[&str] = &["on", "off", "enable", "disable"];
+const BRIGHTNESS_ARGS: &[&str] = &["high", "low"];
+const FLEXBATTERY_ARGS: &[&str] = &["performance", "eco", "pause"];
+const FLEXPUFF_ARGS: &[&str] = &["enable", "disable", "status"];
+const SMART_GESTURE_ARGS: &[&str] = &["enable", "disable"];
+const VIBRATION_ARGS: &[&str] = &["charge", "heating", "starting", "terminated", "puffend"];
+const ON_OFF_ARGS: &[&str] = &["on", "off"];
 
 pub struct IqosHelper {
-    commands: Vec<String>,
     highlighter: MatchingBracketHighlighter,
     hinter: HistoryHinter,
 }
 
 impl IqosHelper {
     pub fn new() -> Self {
-        let commands = vec![
-            "brightness".to_string(),
-            "findmyiqos".to_string(),
-            "smartgesture".to_string(),
-            "vibration".to_string(),
-            "help".to_string(),
-            "exit".to_string(),
-            "info".to_string(),
-        ];
-        
         IqosHelper {
-            commands,
             highlighter: MatchingBracketHighlighter::new(),
             hinter: HistoryHinter {},
         }
     }
+}
+
+fn matching_pairs(values: &[&str], prefix: &str) -> Vec<Pair> {
+    values
+        .iter()
+        .filter(|value| value.starts_with(prefix))
+        .map(|value| Pair {
+            display: (*value).to_string(),
+            replacement: (*value).to_string(),
+        })
+        .collect()
 }
 
 impl Completer for IqosHelper {
@@ -41,86 +65,62 @@ impl Completer for IqosHelper {
         pos: usize,
         _ctx: &Context<'_>,
     ) -> Result<(usize, Vec<Self::Candidate>), ReadlineError> {
-        let args: Vec<&str> = line[..pos].split_whitespace().collect();
-        
+        let input = &line[..pos];
+        let mut args: Vec<&str> = input.split_whitespace().collect();
+        if input
+            .chars()
+            .last()
+            .map(char::is_whitespace)
+            .unwrap_or(false)
+        {
+            args.push("");
+        }
+
         if args.is_empty() {
-            // 入力がない場合は全コマンドを提案
-            let candidates: Vec<Pair> = self.commands
-                .iter()
-                .map(|cmd| Pair { display: cmd.clone(), replacement: cmd.clone() })
-                .collect();
-            
-            return Ok((0, candidates));
+            return Ok((0, matching_pairs(COMMANDS, "")));
         }
-        
+
         if args.len() == 1 {
-            // 最初の引数の補完
             let current = args[0];
-            let start = line.len() - current.len();
-            
-            let candidates: Vec<Pair> = self.commands
-                .iter()
-                .filter(|cmd| cmd.starts_with(current))
-                .map(|cmd| Pair { display: cmd.clone(), replacement: cmd.clone() })
-                .collect();
-            
-            return Ok((start, candidates));
+            let start = pos - current.len();
+
+            return Ok((start, matching_pairs(COMMANDS, current)));
         }
-        
+
         if args.len() == 2 {
-            // サブコマンドの補完
             let cmd = args[0];
             let subcmd = args[1];
-            let start = line.len() - subcmd.len();
-            
+            let start = pos - subcmd.len();
+
             let candidates = match cmd {
-                "brightness" => vec!["high", "medium", "low"]
-                    .iter()
-                    .filter(|sc| sc.starts_with(subcmd))
-                    .map(|sc| Pair { display: sc.to_string(), replacement: sc.to_string() })
-                    .collect(),
-                    
-                "smartgesture" => vec!["enable", "disable"]
-                    .iter()
-                    .filter(|sc| sc.starts_with(subcmd))
-                    .map(|sc| Pair { display: sc.to_string(), replacement: sc.to_string() })
-                    .collect(),
-                
-                "vibration" => vec!["charge", "heating", "starting", "terminated", "puffend"]
-                    .iter()
-                    .filter(|sc| sc.starts_with(subcmd))
-                    .map(|sc| Pair { display: sc.to_string(), replacement: sc.to_string() })
-                    .collect(),
-                    
+                "autostart" => matching_pairs(AUTOSTART_ARGS, subcmd),
+                "brightness" => matching_pairs(BRIGHTNESS_ARGS, subcmd),
+                "flexbattery" => matching_pairs(FLEXBATTERY_ARGS, subcmd),
+                "flexpuff" => matching_pairs(FLEXPUFF_ARGS, subcmd),
+                "smartgesture" => matching_pairs(SMART_GESTURE_ARGS, subcmd),
+                "vibration" => matching_pairs(VIBRATION_ARGS, subcmd),
                 _ => vec![],
             };
-            
+
             return Ok((start, candidates));
         }
-        
-        if args.len() == 3 && args[0] == "vibration" {
+
+        if args.len() == 3 && (args[0] == "vibration" || args[..2] == ["flexbattery", "pause"]) {
             let option_value = args[2];
-            let start = line.len() - option_value.len();
-            
-            let candidates: Vec<Pair> = vec!["on", "off"]
-                .iter()
-                .filter(|val| val.starts_with(option_value))
-                .map(|val| Pair { display: val.to_string(), replacement: val.to_string() })
-                .collect();
-                
-            return Ok((start, candidates));
+            let start = pos - option_value.len();
+
+            return Ok((start, matching_pairs(ON_OFF_ARGS, option_value)));
         }
-        
+
         Ok((pos, vec![]))
     }
 }
 
-// HelperトレイトおよびHelper関連トレイトの実装
 impl Helper for IqosHelper {}
 
 impl Hinter for IqosHelper {
     type Hint = String;
-    
+
     fn hint(&self, line: &str, pos: usize, ctx: &Context<'_>) -> Option<Self::Hint> {
         self.hinter.hint(line, pos, ctx)
     }
@@ -149,3 +149,55 @@ impl Highlighter for IqosHelper {
 }
 
 impl Validator for IqosHelper {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustyline::completion::Completer;
+    use rustyline::history::DefaultHistory;
+
+    fn complete(line: &str) -> (usize, Vec<String>) {
+        let helper = IqosHelper::new();
+        let history = DefaultHistory::new();
+        let ctx = Context::new(&history);
+        let (start, candidates) = helper.complete(line, line.len(), &ctx).unwrap();
+        let replacements = candidates
+            .into_iter()
+            .map(|candidate| candidate.replacement)
+            .collect();
+
+        (start, replacements)
+    }
+
+    #[test]
+    fn completes_registered_commands() {
+        let (start, candidates) = complete("flex");
+
+        assert_eq!(start, 0);
+        assert_eq!(candidates, vec!["flexbattery", "flexpuff"]);
+    }
+
+    #[test]
+    fn completes_only_supported_brightness_values() {
+        let (start, candidates) = complete("brightness ");
+
+        assert_eq!(start, "brightness ".len());
+        assert_eq!(candidates, vec!["high", "low"]);
+    }
+
+    #[test]
+    fn completes_vibration_on_off_values() {
+        let (start, candidates) = complete("vibration heating o");
+
+        assert_eq!(start, "vibration heating ".len());
+        assert_eq!(candidates, vec!["on", "off"]);
+    }
+
+    #[test]
+    fn completes_flexbattery_pause_values() {
+        let (start, candidates) = complete("flexbattery pause ");
+
+        assert_eq!(start, "flexbattery pause ".len());
+        assert_eq!(candidates, vec!["on", "off"]);
+    }
+}
