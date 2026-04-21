@@ -25,7 +25,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     }
 
     let param_args = &str_args[1..];
-    validate_flags(param_args)?;
+    validate_flags(param_args, model.supports_charge_start_vibration())?;
     let current = iqos.read_vibration_settings(model).await?;
     let settings = apply_changes(current, param_args, model.supports_charge_start_vibration())?;
     iqos.update_vibration_settings(model, settings).await?;
@@ -33,7 +33,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     Ok(())
 }
 
-fn validate_flags(args: &[&str]) -> Result<()> {
+fn validate_flags(args: &[&str], has_charge: bool) -> Result<()> {
     const VALID: &[&str] = &["heating", "starting", "puffend", "terminated", "charge"];
     if args.len() % 2 != 0 {
         bail!("Each flag requires a value. Usage: vibration [heating|starting|puffend|terminated|charge] [on|off] ...");
@@ -41,6 +41,9 @@ fn validate_flags(args: &[&str]) -> Result<()> {
     for chunk in args.chunks(2) {
         if !VALID.contains(&chunk[0]) {
             bail!("Unknown flag '{}'. Valid: heating, starting, puffend, terminated, charge", chunk[0]);
+        }
+        if chunk[0] == "charge" && !has_charge {
+            bail!("'charge' flag is not supported on this device");
         }
         if chunk[1] != "on" && chunk[1] != "off" {
             bail!("Invalid value '{}' for '{}'. Use on or off", chunk[1], chunk[0]);
@@ -100,27 +103,37 @@ mod tests {
 
     #[test]
     fn validate_flags_rejects_odd_args() {
-        assert!(validate_flags(&["heating"]).is_err());
+        assert!(validate_flags(&["heating"], false).is_err());
     }
 
     #[test]
     fn validate_flags_rejects_unknown_key() {
-        assert!(validate_flags(&["turbo", "on"]).is_err());
+        assert!(validate_flags(&["turbo", "on"], false).is_err());
     }
 
     #[test]
     fn validate_flags_rejects_invalid_value() {
-        assert!(validate_flags(&["heating", "yes"]).is_err());
+        assert!(validate_flags(&["heating", "yes"], false).is_err());
     }
 
     #[test]
     fn validate_flags_accepts_valid_pairs() {
-        assert!(validate_flags(&["heating", "on", "starting", "off"]).is_ok());
+        assert!(validate_flags(&["heating", "on", "starting", "off"], false).is_ok());
     }
 
     #[test]
     fn validate_flags_accepts_empty() {
-        assert!(validate_flags(&[]).is_ok());
+        assert!(validate_flags(&[], false).is_ok());
+    }
+
+    #[test]
+    fn validate_flags_rejects_charge_without_support() {
+        assert!(validate_flags(&["charge", "on"], false).is_err());
+    }
+
+    #[test]
+    fn validate_flags_accepts_charge_with_support() {
+        assert!(validate_flags(&["charge", "on"], true).is_ok());
     }
 
     #[test]
