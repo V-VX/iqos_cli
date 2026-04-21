@@ -29,7 +29,10 @@ async fn prompt_for_connection(name: &str, addr: &PeripheralId) -> Result<bool> 
         io::stdout().flush()?;
 
         let mut input = String::new();
-        io::stdin().read_line(&mut input)?;
+        let n = io::stdin().read_line(&mut input)?;
+        if n == 0 {
+            return Ok(false);
+        }
 
         match input.trim() {
             answer if answer.eq_ignore_ascii_case("y") => return Ok(true),
