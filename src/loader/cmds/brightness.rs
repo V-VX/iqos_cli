@@ -4,6 +4,7 @@ use anyhow::Result;
 use iqos::{BrightnessLevel, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
+use crate::loader::compat::supports_brightness;
 use crate::loader::parser::IQOSConsole;
 
 pub fn register_command(console: &mut IQOSConsole) {
@@ -16,7 +17,7 @@ pub fn register_command(console: &mut IQOSConsole) {
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
 
-    if !iqos.transport().model().is_iluma_family() {
+    if !supports_brightness(iqos.transport().model()) {
         println!("Brightness not supported on this device");
         return Ok(());
     }
@@ -26,7 +27,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
             iqos.set_brightness(level).await?;
             println!("Brightness set to {level}");
         }
-        Some(Err(e)) => println!("{e}"),
+        Some(Err(e)) => return Err(e.into()),
         None => {
             let level = iqos.read_brightness().await?;
             println!("Brightness: {level}");

@@ -1,4 +1,5 @@
 pub mod cmds;
+pub mod compat;
 pub mod iqoshelper;
 pub mod parser;
 

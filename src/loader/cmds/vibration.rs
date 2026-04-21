@@ -35,27 +35,32 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
 
 fn validate_flags(args: &[&str], has_charge: bool) -> Result<()> {
     const VALID: &[&str] = &["heating", "starting", "puffend", "terminated", "charge"];
-    if args.len() % 2 != 0 {
+    if !args.len().is_multiple_of(2) {
         bail!("Each flag requires a value. Usage: vibration [heating|starting|puffend|terminated|charge] [on|off] ...");
     }
     for chunk in args.chunks(2) {
         if !VALID.contains(&chunk[0]) {
-            bail!("Unknown flag '{}'. Valid: heating, starting, puffend, terminated, charge", chunk[0]);
+            bail!(
+                "Unknown flag '{}'. Valid: heating, starting, puffend, terminated, charge",
+                chunk[0]
+            );
         }
         if chunk[0] == "charge" && !has_charge {
             bail!("'charge' flag is not supported on this device");
         }
         if chunk[1] != "on" && chunk[1] != "off" {
-            bail!("Invalid value '{}' for '{}'. Use on or off", chunk[1], chunk[0]);
+            bail!(
+                "Invalid value '{}' for '{}'. Use on or off",
+                chunk[1],
+                chunk[0]
+            );
         }
     }
     Ok(())
 }
 
 fn flag_update(args: &[&str], key: &str) -> Option<bool> {
-    args.windows(2)
-        .find(|w| w[0] == key)
-        .map(|w| w[1] == "on")
+    args.windows(2).find(|w| w[0] == key).map(|w| w[1] == "on")
 }
 
 fn apply_changes(
@@ -69,11 +74,15 @@ fn apply_changes(
     let terminated = flag_update(args, "terminated").unwrap_or(current.when_manually_terminated());
 
     if has_charge {
-        let charge = flag_update(args, "charge")
-            .unwrap_or(current.when_charging_start().unwrap_or(false));
-        Ok(VibrationSettings::with_charge_start(heating, starting, puff_end, terminated, charge))
+        let charge =
+            flag_update(args, "charge").unwrap_or(current.when_charging_start().unwrap_or(false));
+        Ok(VibrationSettings::with_charge_start(
+            heating, starting, puff_end, terminated, charge,
+        ))
     } else {
-        Ok(VibrationSettings::new(heating, starting, puff_end, terminated))
+        Ok(VibrationSettings::new(
+            heating, starting, puff_end, terminated,
+        ))
     }
 }
 

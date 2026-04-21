@@ -18,9 +18,18 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
     let model = iqos.transport().model();
     let info = iqos.transport().device_info();
     println!("\nModel:        {:?}", model);
-    println!("Serial:       {}", info.serial_number.as_deref().unwrap_or("N/A"));
-    println!("Software:     {}", info.software_revision.as_deref().unwrap_or("N/A"));
-    println!("Manufacturer: {}", info.manufacturer_name.as_deref().unwrap_or("N/A"));
+    println!(
+        "Serial:       {}",
+        info.serial_number.as_deref().unwrap_or("N/A")
+    );
+    println!(
+        "Software:     {}",
+        info.software_revision.as_deref().unwrap_or("N/A")
+    );
+    println!(
+        "Manufacturer: {}",
+        info.manufacturer_name.as_deref().unwrap_or("N/A")
+    );
     println!();
     Ok(())
 }

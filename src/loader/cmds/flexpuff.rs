@@ -4,6 +4,7 @@ use anyhow::Result;
 use iqos::{FlexPuffSetting, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
+use crate::loader::compat::supports_flexpuff;
 use crate::loader::parser::IQOSConsole;
 
 pub fn register_command(console: &mut IQOSConsole) {
@@ -16,8 +17,8 @@ pub fn register_command(console: &mut IQOSConsole) {
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
 
-    if !iqos.transport().model().is_iluma_family() {
-        println!("FlexPuff is only available on ILUMA devices");
+    if !supports_flexpuff(iqos.transport().model()) {
+        println!("FlexPuff is only available on ILUMA i series devices");
         return Ok(());
     }
 
@@ -32,7 +33,14 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         }
         Some("status") | None => {
             let s = iqos.read_flexpuff().await?;
-            println!("FlexPuff: {}", if s.is_enabled() { "enabled" } else { "disabled" });
+            println!(
+                "FlexPuff: {}",
+                if s.is_enabled() {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+            );
         }
         Some(opt) => println!("Invalid option: {opt}. Use enable/disable/status"),
     }
