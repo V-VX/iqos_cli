@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use iqos::{FlexPuffSetting, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
@@ -14,7 +14,15 @@ pub fn register_command(console: &mut IQOSConsole) {
     );
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FlexPuffAction {
+    Enable,
+    Disable,
+    Status,
+}
+
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
+    let action = parse_action(&args)?;
     let iqos = iqos.lock().await;
 
     if !supports_flexpuff(iqos.transport().model()) {
@@ -22,16 +30,16 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         return Ok(());
     }
 
-    match args.get(1).map(String::as_str) {
-        Some("enable") => {
+    match action {
+        FlexPuffAction::Enable => {
             iqos.set_flexpuff(FlexPuffSetting::new(true)).await?;
             println!("FlexPuff enabled");
         }
-        Some("disable") => {
+        FlexPuffAction::Disable => {
             iqos.set_flexpuff(FlexPuffSetting::new(false)).await?;
             println!("FlexPuff disabled");
         }
-        Some("status") | None => {
+        FlexPuffAction::Status => {
             let s = iqos.read_flexpuff().await?;
             println!(
                 "FlexPuff: {}",
@@ -42,8 +50,74 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
                 }
             );
         }
-        Some(opt) => println!("Invalid option: {opt}. Use enable/disable/status"),
     }
 
     Ok(())
+}
+
+fn parse_action(args: &[String]) -> Result<FlexPuffAction> {
+    match args.get(1).map(String::as_str) {
+        None if args.len() == 1 => Ok(FlexPuffAction::Status),
+        Some("enable") if args.len() == 2 => Ok(FlexPuffAction::Enable),
+        Some("enable") => bail!("Usage: flexpuff enable"),
+        Some("disable") if args.len() == 2 => Ok(FlexPuffAction::Disable),
+        Some("disable") => bail!("Usage: flexpuff disable"),
+        Some("status") if args.len() == 2 => Ok(FlexPuffAction::Status),
+        Some("status") => bail!("Usage: flexpuff status"),
+        Some(opt) => bail!("Invalid option: {opt}. Use enable/disable/status"),
+        None => bail!("Usage: flexpuff [enable|disable|status]"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(parts: &[&str]) -> Vec<String> {
+        parts.iter().map(|part| (*part).to_owned()).collect()
+    }
+
+    #[test]
+    fn parses_enable() {
+        assert_eq!(
+            parse_action(&args(&["flexpuff", "enable"])).unwrap(),
+            FlexPuffAction::Enable
+        );
+    }
+
+    #[test]
+    fn parses_disable() {
+        assert_eq!(
+            parse_action(&args(&["flexpuff", "disable"])).unwrap(),
+            FlexPuffAction::Disable
+        );
+    }
+
+    #[test]
+    fn parses_status_subcommand() {
+        assert_eq!(
+            parse_action(&args(&["flexpuff", "status"])).unwrap(),
+            FlexPuffAction::Status
+        );
+    }
+
+    #[test]
+    fn parses_default_status() {
+        assert_eq!(
+            parse_action(&args(&["flexpuff"])).unwrap(),
+            FlexPuffAction::Status
+        );
+    }
+
+    #[test]
+    fn rejects_trailing_args() {
+        assert!(parse_action(&args(&["flexpuff", "enable", "typo"])).is_err());
+        assert!(parse_action(&args(&["flexpuff", "disable", "typo"])).is_err());
+        assert!(parse_action(&args(&["flexpuff", "status", "typo"])).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_subcommand() {
+        assert!(parse_action(&args(&["flexpuff", "invalid"])).is_err());
+    }
 }

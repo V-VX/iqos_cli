@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use iqos::protocol::smartgesture_command;
 use iqos::{Iqos, IqosBle};
 use tokio::sync::Mutex;
@@ -15,7 +15,14 @@ pub fn register_command(console: &mut IQOSConsole) {
     );
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SmartGestureAction {
+    Enable,
+    Disable,
+}
+
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
+    let action = parse_action(&args)?;
     let iqos = iqos.lock().await;
     let model = iqos.transport().model();
 
@@ -24,18 +31,68 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         return Ok(());
     }
 
-    match args.get(1).map(String::as_str) {
-        Some("enable") => {
+    match action {
+        SmartGestureAction::Enable => {
             iqos.transport().send(smartgesture_command(true)).await?;
             println!("Smart Gesture enabled");
         }
-        Some("disable") => {
+        SmartGestureAction::Disable => {
             iqos.transport().send(smartgesture_command(false)).await?;
             println!("Smart Gesture disabled");
         }
-        Some(opt) => println!("Invalid option: {opt}. Use enable/disable"),
-        None => println!("Usage: smartgesture [enable|disable]"),
     }
 
     Ok(())
+}
+
+fn parse_action(args: &[String]) -> Result<SmartGestureAction> {
+    match args.get(1).map(String::as_str) {
+        Some("enable") if args.len() == 2 => Ok(SmartGestureAction::Enable),
+        Some("enable") => bail!("Usage: smartgesture enable"),
+        Some("disable") if args.len() == 2 => Ok(SmartGestureAction::Disable),
+        Some("disable") => bail!("Usage: smartgesture disable"),
+        Some(opt) => bail!("Invalid option: {opt}. Use enable/disable"),
+        None => bail!("Usage: smartgesture [enable|disable]"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(parts: &[&str]) -> Vec<String> {
+        parts.iter().map(|part| (*part).to_owned()).collect()
+    }
+
+    #[test]
+    fn parses_enable() {
+        assert_eq!(
+            parse_action(&args(&["smartgesture", "enable"])).unwrap(),
+            SmartGestureAction::Enable
+        );
+    }
+
+    #[test]
+    fn parses_disable() {
+        assert_eq!(
+            parse_action(&args(&["smartgesture", "disable"])).unwrap(),
+            SmartGestureAction::Disable
+        );
+    }
+
+    #[test]
+    fn rejects_trailing_args() {
+        assert!(parse_action(&args(&["smartgesture", "enable", "typo"])).is_err());
+        assert!(parse_action(&args(&["smartgesture", "disable", "typo"])).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_subcommand() {
+        assert!(parse_action(&args(&["smartgesture", "status"])).is_err());
+    }
+
+    #[test]
+    fn rejects_missing_subcommand() {
+        assert!(parse_action(&args(&["smartgesture"])).is_err());
+    }
 }
