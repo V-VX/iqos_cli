@@ -1,17 +1,11 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Result};
-use iqos::protocol::{LOAD_FLEXBATTERY_COMMAND, LOAD_PAUSEMODE_COMMAND};
 use iqos::{FlexBatteryMode, FlexBatterySettings, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
 use crate::loader::compat::supports_flexbattery;
 use crate::loader::parser::IQOSConsole;
-
-const PAUSEMODE_ENABLE_SET_COMMAND: [u8; 9] =
-    [0x00, 0xC9, 0x47, 0x24, 0x02, 0x01, 0x00, 0x00, 0x05];
-const PAUSEMODE_DISABLE_SET_COMMAND: [u8; 9] =
-    [0x00, 0xC9, 0x47, 0x24, 0x02, 0x00, 0x00, 0x00, 0x6E];
 
 pub fn register_command(console: &mut IQOSConsole) {
     console.register_command(
@@ -32,12 +26,8 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let cmd = args.get(1).map(|s| s.to_ascii_lowercase());
     let settings = match cmd.as_deref() {
         None => {
-            let s = read_flexbattery(&iqos).await?;
-            println!(
-                "FlexBattery: mode={:?}, pause={:?}",
-                s.mode(),
-                s.pause_mode()
-            );
+            let s = iqos.read_flexbattery(model).await?;
+            println!("FlexBattery: mode={:?}, pause={:?}", s.mode(), s.pause_mode());
             return Ok(());
         }
         Some("pause") => {
@@ -46,7 +36,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
             }
             let value = args.get(2).map(|s| s.to_ascii_lowercase());
             let pause = parse_on_off(value.as_deref())?;
-            let current = read_flexbattery(&iqos).await?;
+            let current = iqos.read_flexbattery(model).await?;
             FlexBatterySettings::new(current.mode(), pause)
         }
         Some("performance") => {
@@ -64,29 +54,8 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         Some(s) => bail!("Invalid option: {s}. Use performance/eco/pause [on|off]"),
     };
 
-    set_flexbattery(&iqos, settings).await?;
+    iqos.set_flexbattery(model, settings).await?;
     println!("FlexBattery settings updated");
-    Ok(())
-}
-
-async fn read_flexbattery(iqos: &Iqos<IqosBle>) -> Result<FlexBatterySettings> {
-    let mode_response = iqos.transport().request(&LOAD_FLEXBATTERY_COMMAND).await?;
-    let pause_response = iqos.transport().request(&LOAD_PAUSEMODE_COMMAND).await?;
-    Ok(FlexBatterySettings::from_responses(
-        &mode_response,
-        &pause_response,
-    )?)
-}
-
-async fn set_flexbattery(iqos: &Iqos<IqosBle>, settings: FlexBatterySettings) -> Result<()> {
-    iqos.transport()
-        .send(settings.mode().write_command())
-        .await?;
-    iqos.transport().send(&LOAD_FLEXBATTERY_COMMAND).await?;
-    if let Some(pause_mode) = settings.pause_mode() {
-        iqos.transport().send(pausemode_command(pause_mode)).await?;
-        iqos.transport().send(&LOAD_PAUSEMODE_COMMAND).await?;
-    }
     Ok(())
 }
 
@@ -96,14 +65,6 @@ fn parse_on_off(value: Option<&str>) -> Result<Option<bool>> {
         Some("off") => Ok(Some(false)),
         None => Ok(None),
         Some(s) => bail!("Invalid pause value: {s}. Use on/off"),
-    }
-}
-
-fn pausemode_command(enabled: bool) -> &'static [u8] {
-    if enabled {
-        &PAUSEMODE_ENABLE_SET_COMMAND
-    } else {
-        &PAUSEMODE_DISABLE_SET_COMMAND
     }
 }
 
@@ -129,11 +90,5 @@ mod tests {
     #[test]
     fn pause_invalid_returns_err() {
         assert!(parse_on_off(Some("yes")).is_err());
-    }
-
-    #[test]
-    fn pausemode_command_selects_correct_command() {
-        assert_eq!(pausemode_command(true), &PAUSEMODE_ENABLE_SET_COMMAND);
-        assert_eq!(pausemode_command(false), &PAUSEMODE_DISABLE_SET_COMMAND);
     }
 }
