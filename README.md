@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**A command-line interface for controlling IQOS devices via Bluetooth Low Energy**
+**A command-line interface for controlling IQOS devices via Bluetooth Low Energy, built on [V-VX/iqos](https://github.com/V-VX/iqos)**
 
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square)](LICENSE)
@@ -17,6 +17,7 @@
 ## Table of Contents
 
 - [Overview](#-overview)
+- [Architecture](#-architecture)
 - [Features](#-features)
 - [Device Compatibility](#-device-compatibility)
 - [Prerequisites](#-prerequisites)
@@ -31,7 +32,11 @@
 
 ## Overview
 
-IQOS CLI is a Rust-based command-line tool for controlling IQOS devices over Bluetooth Low Energy. It scans for nearby devices, prompts for a connection, then drops into an interactive REPL for device control.
+IQOS CLI is a Rust-based command-line tool for controlling IQOS devices over Bluetooth Low Energy, built on top of [V-VX/iqos](https://github.com/V-VX/iqos). It scans for nearby devices, prompts for a connection, then drops into an interactive REPL for device control.
+
+## Architecture
+
+All device protocol logic — BLE framing, capability negotiation, command encoding, response parsing — lives in the [iqos crate (V-VX/iqos)](https://github.com/V-VX/iqos). This repository is a thin CLI layer: it handles device discovery, user interaction, and argument parsing, then delegates every device operation to the crate's high-level API.
 
 ## Features
 
