@@ -187,6 +187,65 @@ pub fn scan_timeout(cli_value: Option<u64>) -> Duration {
     Duration::from_secs(seconds)
 }
 
+pub fn normalize_global_options(args: Vec<String>) -> Vec<String> {
+    let Some((program, rest)) = args.split_first() else {
+        return args;
+    };
+
+    let mut normalized = vec![program.clone()];
+    let mut global_options = Vec::new();
+    let mut remaining = Vec::new();
+    let mut iter = rest.iter();
+
+    while let Some(arg) = iter.next() {
+        if arg == "--" {
+            remaining.push(arg.clone());
+            remaining.extend(iter.cloned());
+            break;
+        }
+
+        if let Some(value) = arg.strip_prefix("--model=") {
+            global_options.push("--model".to_string());
+            global_options.push(value.to_string());
+            continue;
+        }
+
+        if arg == "--model" {
+            match iter.next() {
+                Some(value) => {
+                    global_options.push(arg.clone());
+                    global_options.push(value.clone());
+                }
+                None => remaining.push(arg.clone()),
+            }
+            continue;
+        }
+
+        if let Some(value) = arg.strip_prefix("--timeout=") {
+            global_options.push("--timeout".to_string());
+            global_options.push(value.to_string());
+            continue;
+        }
+
+        if arg == "--timeout" {
+            match iter.next() {
+                Some(value) => {
+                    global_options.push(arg.clone());
+                    global_options.push(value.clone());
+                }
+                None => remaining.push(arg.clone()),
+            }
+            continue;
+        }
+
+        remaining.push(arg.clone());
+    }
+
+    normalized.extend(global_options);
+    normalized.extend(remaining);
+    normalized
+}
+
 pub fn should_use_cli(args: &[String]) -> bool {
     args.len() > 1
 }
@@ -253,9 +312,98 @@ mod tests {
     }
 
     #[test]
+    fn normalizes_global_options_after_command() {
+        let args = normalize_global_options(strings([
+            "iqos",
+            "battery",
+            "--model",
+            "iluma-i",
+            "--timeout=2",
+        ]));
+
+        assert_eq!(
+            args,
+            strings(["iqos", "--model", "iluma-i", "--timeout", "2", "battery"])
+        );
+
+        let cli = Cli::try_parse_from(args).unwrap();
+        assert_eq!(cli.model.as_deref(), Some("iluma-i"));
+        assert_eq!(cli.timeout, Some(2));
+        assert!(matches!(cli.command, Some(CliCommand::Battery)));
+    }
+
+    #[test]
+    fn normalizes_global_options_between_command_args() {
+        let args = normalize_global_options(strings([
+            "iqos",
+            "vibration",
+            "heating",
+            "--model=iluma-i",
+            "on",
+            "--timeout",
+            "3",
+        ]));
+
+        assert_eq!(
+            args,
+            strings([
+                "iqos",
+                "--model",
+                "iluma-i",
+                "--timeout",
+                "3",
+                "vibration",
+                "heating",
+                "on",
+            ])
+        );
+
+        let cli = Cli::try_parse_from(args).unwrap();
+        assert_eq!(cli.model.as_deref(), Some("iluma-i"));
+        assert_eq!(cli.timeout, Some(3));
+        assert_eq!(
+            cli.command.map(CliCommand::into_one_shot),
+            Some(OneShotCommand::Registered {
+                name: "vibration",
+                args: strings(["vibration", "heating", "on"]),
+            })
+        );
+    }
+
+    #[test]
+    fn leaves_options_after_separator_as_command_args() {
+        let args = normalize_global_options(strings([
+            "iqos",
+            "vibration",
+            "--model",
+            "iluma-i",
+            "--",
+            "--model",
+            "raw",
+        ]));
+
+        assert_eq!(
+            args,
+            strings([
+                "iqos",
+                "--model",
+                "iluma-i",
+                "vibration",
+                "--",
+                "--model",
+                "raw",
+            ])
+        );
+    }
+
+    #[test]
     fn any_argument_uses_cli_mode() {
         assert!(!should_use_cli(&["iqos".to_string()]));
         assert!(should_use_cli(&["iqos".to_string(), "--help".to_string()]));
         assert!(should_use_cli(&["iqos".to_string(), "battery".to_string()]));
+    }
+
+    fn strings(values: impl IntoIterator<Item = &'static str>) -> Vec<String> {
+        values.into_iter().map(str::to_string).collect()
     }
 }

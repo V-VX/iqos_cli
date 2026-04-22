@@ -16,7 +16,7 @@ mod cli;
 mod config;
 mod loader;
 
-use cli::{parse_device_model, scan_timeout, Cli, OneShotCommand};
+use cli::{normalize_global_options, parse_device_model, scan_timeout, Cli, OneShotCommand};
 use config::{print_saved_devices, AppConfig, ConnectedDevice};
 use loader::{run_console_with_device, run_registered_command};
 
@@ -120,6 +120,7 @@ async fn run_cli(mut args: Vec<String>) -> i32 {
     if let Some(program) = args.first_mut() {
         *program = "iqos".to_string();
     }
+    let args = normalize_global_options(args);
 
     let cli = match Cli::try_parse_from(args) {
         Ok(cli) => cli,
