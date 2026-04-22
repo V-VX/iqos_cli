@@ -352,7 +352,9 @@ git tag -s v0.1.0 -m "v0.1.0"
 git push origin v0.1.0
 ```
 
-The release workflow validates tags like `v1.2.3` or `v1.2.3-rc.1`, verifies that the pushed tag already exists, then creates a GitHub Release with generated notes. Tags with a prerelease suffix, such as `-rc.1`, are published as prereleases.
+The release workflow validates tags like `v1.2.3` or `v1.2.3-rc.1`, verifies that the pushed tag already exists, builds packages for Linux, Windows, and macOS, then creates a GitHub Release with generated notes. Tags with a prerelease suffix, such as `-rc.1`, are published as prereleases.
+
+Release packages contain the executable as `iqos` on Linux/macOS and `iqos.exe` on Windows, so users can place the extracted binary on `PATH` and run the `iqos` command directly.
 
 Generated release notes are grouped by PR labels using `.github/release.yml`. Use clear PR titles and apply one of these labels before merging:
 

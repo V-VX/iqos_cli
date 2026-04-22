@@ -4,55 +4,185 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to build and publish assets for"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref_name }}
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  create-release:
-    name: Create GitHub release
+  validate:
+    name: Validate release tag
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Validate tag
+        id: tag
         shell: bash
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
           if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::Release tags must use semantic versioning, for example v1.2.3 or v1.2.3-rc.1"
             exit 1
           fi
 
-      - name: Create release
+          if ! git ls-remote --exit-code --tags "https://github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${tag}" >/dev/null; then
+            echo "::error::Tag ${tag} does not exist on origin"
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          if [[ "$tag" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: Build ${{ matrix.package }}
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            package: linux-x86_64
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: windows-latest
+            package: windows-x86_64
+            target: x86_64-pc-windows-msvc
+            archive: zip
+          - os: macos-13
+            package: macos-universal
+            target: universal-apple-darwin
+            archive: tar.gz
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev pkg-config
+
+      - name: Install Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Build release binary
+        if: matrix.package != 'macos-universal'
+        shell: bash
+        run: |
+          rustup target add "${{ matrix.target }}"
+          cargo build --release --locked --target "${{ matrix.target }}"
+
+      - name: Build universal macOS binary
+        if: matrix.package == 'macos-universal'
+        shell: bash
+        run: |
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+          cargo build --release --locked --target aarch64-apple-darwin
+          mkdir -p "target/${{ matrix.target }}/release"
+          lipo -create \
+            target/x86_64-apple-darwin/release/iqos_cli \
+            target/aarch64-apple-darwin/release/iqos_cli \
+            -output "target/${{ matrix.target }}/release/iqos_cli"
+
+      - name: Package Unix asset
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          tag="${{ needs.validate.outputs.tag }}"
+          name="iqos_cli-${tag}-${{ matrix.package }}"
+          mkdir -p "dist/${name}"
+          cp "target/${{ matrix.target }}/release/iqos_cli" "dist/${name}/iqos"
+          cp README.md LICENSE "dist/${name}/"
+          chmod +x "dist/${name}/iqos"
+          tar -czf "dist/${name}.tar.gz" -C dist "${name}"
+
+      - name: Package Windows asset
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tag = "${{ needs.validate.outputs.tag }}"
+          $name = "iqos_cli-$tag-${{ matrix.package }}"
+          New-Item -ItemType Directory -Force -Path "dist/$name" | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/iqos_cli.exe" "dist/$name/iqos.exe"
+          Copy-Item "README.md", "LICENSE" "dist/$name/"
+          Compress-Archive -Path "dist/$name/*" -DestinationPath "dist/$name.zip" -Force
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iqos-cli-${{ matrix.package }}
+          path: dist/iqos_cli-${{ needs.validate.outputs.tag }}-${{ matrix.package }}.${{ matrix.archive }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish release
+    needs:
+      - validate
+      - build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: iqos-cli-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd release-assets
+          sha256sum iqos_cli-* > SHA256SUMS.txt
+
+      - name: Create or update release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${{ needs.validate.outputs.tag }}"
+          files=(release-assets/*)
 
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $tag already exists; skipping."
+            gh release upload "$tag" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber
             exit 0
           fi
 
           args=(
             "$tag"
+            "${files[@]}"
             --repo "$GITHUB_REPOSITORY"
             --verify-tag
             --fail-on-no-commits
             --generate-notes
           )
 
-          if [[ "$tag" == *-* ]]; then
+          if [[ "${{ needs.validate.outputs.prerelease }}" == "true" ]]; then
             args+=(--prerelease)
           fi
 
