@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -8,19 +9,77 @@ use rustyline::error::ReadlineError;
 use rustyline::{Config, Editor};
 use tokio::sync::Mutex;
 
+use crate::config::ConnectedDevice;
 use crate::loader::cmds::command::{CommandFn, CommandRegistry};
 use crate::loader::iqoshelper::IqosHelper;
+
+#[derive(Debug)]
+pub enum CommandError {
+    InvalidArguments(String),
+    DeviceFailure(String),
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidArguments(message) | Self::DeviceFailure(message) => f.write_str(message),
+        }
+    }
+}
+
+impl std::error::Error for CommandError {}
+
+impl CommandError {
+    pub fn invalid_arguments(message: impl Into<String>) -> Self {
+        Self::InvalidArguments(message.into())
+    }
+
+    fn classify(error: anyhow::Error) -> Self {
+        match error.downcast::<CommandError>() {
+            Ok(command_error) => command_error,
+            Err(error) => {
+                let message = error.to_string();
+                if is_invalid_argument_message(&message) {
+                    return Self::InvalidArguments(message);
+                }
+
+                Self::DeviceFailure(message)
+            }
+        }
+    }
+}
+
+pub fn invalid_arguments(message: impl Into<String>) -> anyhow::Error {
+    CommandError::invalid_arguments(message).into()
+}
+
+pub fn is_invalid_argument_message(message: &str) -> bool {
+    message.starts_with("Usage:")
+        || message.starts_with("Invalid option:")
+        || message.starts_with("Invalid pause value:")
+        || message.starts_with("Each flag requires")
+        || message.starts_with("Unknown command:")
+}
 
 pub struct IQOSConsole {
     commands: CommandRegistry,
     iqos: Arc<Mutex<Iqos<IqosBle>>>,
+    connected_device: Option<ConnectedDevice>,
 }
 
 impl IQOSConsole {
     pub fn new(iqos: Iqos<IqosBle>) -> Self {
+        Self::with_connected_device(iqos, None)
+    }
+
+    pub fn with_connected_device(
+        iqos: Iqos<IqosBle>,
+        connected_device: Option<ConnectedDevice>,
+    ) -> Self {
         Self {
             commands: HashMap::with_capacity(16),
             iqos: Arc::new(Mutex::new(iqos)),
+            connected_device,
         }
     }
 
@@ -28,12 +87,17 @@ impl IQOSConsole {
         self.commands.insert(name.to_string(), command);
     }
 
-    async fn execute_command(&self, command: &str, args: Vec<String>) -> Result<()> {
+    pub async fn execute_command(&self, command: &str, args: Vec<String>) -> Result<bool> {
+        if command == "device" {
+            crate::loader::cmds::device::execute(args, self.connected_device.as_ref()).await?;
+            return Ok(true);
+        }
+
         if let Some(cmd) = self.commands.get(command) {
-            cmd(self.iqos.clone(), args).await
+            cmd(self.iqos.clone(), args).await?;
+            Ok(true)
         } else {
-            println!("Unknown command: {command}");
-            Ok(())
+            Ok(false)
         }
     }
 
@@ -65,8 +129,10 @@ impl IQOSConsole {
                         println!("Goodbye!");
                         break;
                     }
-                    if let Err(e) = self.execute_command(&cmd, args).await {
-                        eprintln!("Error: {e}");
+                    match self.execute_command(&cmd, args).await {
+                        Ok(true) => {}
+                        Ok(false) => println!("Unknown command: {cmd}"),
+                        Err(e) => eprintln!("Error: {e}"),
                     }
                 }
                 Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
@@ -84,10 +150,33 @@ impl IQOSConsole {
     }
 }
 
+#[allow(dead_code)]
 pub async fn run_console(iqos: Iqos<IqosBle>) -> Result<()> {
     let mut console = IQOSConsole::new(iqos);
     register_all_commands(&mut console);
     console.run().await
+}
+
+pub async fn run_console_with_device(iqos: Iqos<IqosBle>, device: ConnectedDevice) -> Result<()> {
+    let mut console = IQOSConsole::with_connected_device(iqos, Some(device));
+    register_all_commands(&mut console);
+    console.run().await
+}
+
+pub async fn run_registered_command(
+    iqos: Iqos<IqosBle>,
+    command: &str,
+    args: Vec<String>,
+) -> Result<()> {
+    let mut console = IQOSConsole::new(iqos);
+    register_all_commands(&mut console);
+    match console.execute_command(command, args).await {
+        Ok(true) => Ok(()),
+        Ok(false) => {
+            Err(CommandError::invalid_arguments(format!("Unknown command: {command}")).into())
+        }
+        Err(error) => Err(CommandError::classify(error).into()),
+    }
 }
 
 fn register_all_commands(console: &mut IQOSConsole) {
@@ -97,6 +186,7 @@ fn register_all_commands(console: &mut IQOSConsole) {
     crate::loader::cmds::lock::register_command(console);
     crate::loader::cmds::unlock::register_command(console);
     crate::loader::cmds::findmyiqos::register_command(console);
+    crate::loader::cmds::version::register_command(console);
     crate::loader::cmds::flexpuff::register_command(console);
     crate::loader::cmds::flexbattery::register_command(console);
     crate::loader::cmds::brightness::register_command(console);

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use iqos::{Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::loader::parser::IQOSConsole;
+use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
     console.register_command(
@@ -52,10 +52,12 @@ fn parse_action(args: &[String]) -> Result<AutostartAction> {
         Some("status") if args.len() == 2 => Ok(AutostartAction::Status),
         Some("on") | Some("enable") if args.len() == 2 => Ok(AutostartAction::Enable),
         Some("off") | Some("disable") if args.len() == 2 => Ok(AutostartAction::Disable),
-        Some(_) if args.len() > 2 => bail!("Usage: autostart [enable|on|disable|off|status]"),
-        Some(opt) => {
-            bail!("Invalid option: {opt}. Use enable/on, disable/off, or status (default)")
-        }
+        Some(_) if args.len() > 2 => Err(invalid_arguments(
+            "Usage: autostart [enable|on|disable|off|status]",
+        )),
+        Some(opt) => Err(invalid_arguments(format!(
+            "Invalid option: {opt}. Use enable/on, disable/off, or status (default)"
+        ))),
     }
 }
 

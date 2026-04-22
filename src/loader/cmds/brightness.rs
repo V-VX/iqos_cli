@@ -5,7 +5,7 @@ use iqos::{BrightnessLevel, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
 use crate::loader::compat::supports_brightness;
-use crate::loader::parser::IQOSConsole;
+use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
     console.register_command(
@@ -27,7 +27,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
             iqos.set_brightness(level).await?;
             println!("Brightness set to {level}");
         }
-        Some(Err(e)) => return Err(e.into()),
+        Some(Err(e)) => return Err(invalid_arguments(e.to_string())),
         None => {
             let level = iqos.read_brightness().await?;
             println!("Brightness: {level}");
