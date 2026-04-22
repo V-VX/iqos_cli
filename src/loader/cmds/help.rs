@@ -23,6 +23,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
     println!("  battery            Display battery level");
     println!("  device             Manage saved device labels");
     println!("  findmyiqos         Activate find-my-device vibration");
+    println!("  version            Display IQOS CLI version");
     if model.supports(DeviceCapability::DeviceLock) {
         println!("  lock | unlock      Lock or unlock the device");
     }

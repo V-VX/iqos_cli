@@ -186,6 +186,7 @@ fn register_all_commands(console: &mut IQOSConsole) {
     crate::loader::cmds::lock::register_command(console);
     crate::loader::cmds::unlock::register_command(console);
     crate::loader::cmds::findmyiqos::register_command(console);
+    crate::loader::cmds::version::register_command(console);
     crate::loader::cmds::flexpuff::register_command(console);
     crate::loader::cmds::flexbattery::register_command(console);
     crate::loader::cmds::brightness::register_command(console);

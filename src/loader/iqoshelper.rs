@@ -22,6 +22,7 @@ const COMMANDS: &[&str] = &[
     "quit",
     "smartgesture",
     "unlock",
+    "version",
     "vibration",
 ];
 const AUTOSTART_ARGS: &[&str] = &["on", "off", "enable", "disable", "status"];
@@ -191,6 +192,14 @@ mod tests {
 
         assert_eq!(start, "device ".len());
         assert_eq!(candidates, vec!["list", "save", "remove"]);
+    }
+
+    #[test]
+    fn completes_version_command() {
+        let (start, candidates) = complete("ver");
+
+        assert_eq!(start, 0);
+        assert_eq!(candidates, vec!["version"]);
     }
 
     #[test]

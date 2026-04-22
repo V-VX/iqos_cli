@@ -1,10 +1,20 @@
 use std::time::Duration;
 
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Parser)]
-#[command(name = "iqos", version, about = "Control IQOS devices over BLE")]
+#[command(
+    name = "iqos",
+    about = "Control IQOS devices over BLE",
+    disable_version_flag = true
+)]
 pub struct Cli {
+    /// Print IQOS CLI version.
+    #[arg(short = 'v', long = "version", action = ArgAction::SetTrue)]
+    pub version: bool,
+
     /// Target device model or saved device label.
     #[arg(long, value_name = "target")]
     pub model: Option<String>,
@@ -162,6 +172,17 @@ pub fn scan_timeout(cli_value: Option<u64>) -> Duration {
         .unwrap_or(10);
 
     Duration::from_secs(seconds)
+}
+
+pub fn print_version() {
+    println!("{VERSION}");
+}
+
+pub fn has_version_flag(args: &[String]) -> bool {
+    args.iter()
+        .skip(1)
+        .take_while(|arg| arg.as_str() != "--")
+        .any(|arg| arg == "-v" || arg == "--version")
 }
 
 pub fn normalize_global_options(args: Vec<String>) -> Vec<String> {
@@ -347,6 +368,36 @@ mod tests {
                 args: strings(["vibration", "heating", "on"]),
             })
         );
+    }
+
+    #[test]
+    fn parses_lowercase_version_flag() {
+        let cli = Cli::try_parse_from(["iqos", "-v"]).unwrap();
+
+        assert!(cli.version);
+        assert!(cli.command.is_none());
+
+        let cli = Cli::try_parse_from(["iqos", "--version"]).unwrap();
+
+        assert!(cli.version);
+        assert!(cli.command.is_none());
+    }
+
+    #[test]
+    fn detects_version_flag_before_separator() {
+        assert!(has_version_flag(&strings([
+            "iqos",
+            "battery",
+            "--version",
+            "--model",
+            "iluma",
+        ])));
+        assert!(!has_version_flag(&strings([
+            "iqos",
+            "vibration",
+            "--",
+            "--version",
+        ])));
     }
 
     #[test]

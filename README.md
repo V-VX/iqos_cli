@@ -165,6 +165,7 @@ This is useful after saving a device label, because it skips the manual "Connect
 | `iqos` | Scan nearby IQOS devices, ask which one to connect to, then open interactive mode |
 | `iqos --help` | Show top-level CLI help |
 | `iqos help` | Same as `iqos --help` |
+| `iqos -v` / `iqos --version` | Print the IQOS CLI version and exit without scanning |
 | `iqos --model <model-or-label>` | Connect to a built-in model selector or saved label, then open interactive mode |
 | `iqos --model <model-or-label> <command>` | Connect to the selected target and run one command |
 | `iqos <command> --model <model-or-label>` | Same as above; global options may be placed after the command |
@@ -172,11 +173,14 @@ This is useful after saving a device label, because it skips the manual "Connect
 
 Built-in model selectors include `iluma`, `iluma-one`, `iluma-prime`, `iluma-i`, `iluma-i-one`, and `iluma-i-prime`. Saved labels are managed with the `device` command.
 
+`-v` / `--version` takes precedence over other arguments before `--`; it prints the CLI version and exits without scanning or connecting.
+
 ### General
 
 | Command | Description |
 |---------|-------------|
 | `help` | List all available commands |
+| `version` | Show the IQOS CLI version |
 | `info` | Show device model, serial number, GATT metadata, firmware, product number, and battery voltage |
 | `battery` | Show current battery level |
 | `diagnosis` | Show puff count, days used, and battery voltage |

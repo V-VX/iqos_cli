@@ -12,4 +12,5 @@ pub mod info;
 pub mod lock;
 pub mod smartgesture;
 pub mod unlock;
+pub mod version;
 pub mod vibration;

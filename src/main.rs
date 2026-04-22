@@ -129,6 +129,11 @@ async fn main() {
 }
 
 async fn run_cli(mut args: Vec<String>) -> i32 {
+    if cli::has_version_flag(&args) {
+        cli::print_version();
+        return 0;
+    }
+
     if let Some(program) = args.first_mut() {
         *program = "iqos".to_string();
     }
@@ -142,6 +147,11 @@ async fn run_cli(mut args: Vec<String>) -> i32 {
             return code;
         }
     };
+
+    if cli.version {
+        cli::print_version();
+        return 0;
+    }
 
     let Some(command) = cli.command else {
         return match run_auto_connected_console(cli.model, scan_timeout(cli.timeout)).await {
