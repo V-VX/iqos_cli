@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{Iqos, IqosBle};
+use iqos::{DeviceCapability, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
 use crate::loader::parser::{invalid_arguments, IQOSConsole};
@@ -24,6 +24,11 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let action = parse_action(&args)?;
     let iqos = iqos.lock().await;
     let model = iqos.transport().model();
+
+    if !model.supports(DeviceCapability::AutoStart) {
+        println!("Autostart is not supported on this device");
+        return Ok(());
+    }
 
     match action {
         AutostartAction::Enable => {
@@ -64,6 +69,7 @@ fn parse_action(args: &[String]) -> Result<AutostartAction> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use iqos::DeviceModel;
 
     fn args(parts: &[&str]) -> Vec<String> {
         parts.iter().map(|s| (*s).to_owned()).collect()
@@ -115,5 +121,24 @@ mod tests {
     #[test]
     fn rejects_invalid() {
         assert!(parse_action(&args(&["autostart", "bogus"])).is_err());
+    }
+
+    #[test]
+    fn autostart_capability_matches_iluma_i_series() {
+        for model in [
+            DeviceModel::IlumaI,
+            DeviceModel::IlumaIOne,
+            DeviceModel::IlumaIPrime,
+        ] {
+            assert!(model.supports(DeviceCapability::AutoStart));
+        }
+
+        for model in [
+            DeviceModel::Iluma,
+            DeviceModel::IlumaOne,
+            DeviceModel::IlumaPrime,
+        ] {
+            assert!(!model.supports(DeviceCapability::AutoStart));
+        }
     }
 }
