@@ -4,9 +4,6 @@ use anyhow::Result;
 use iqos::{DeviceCapability, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::loader::compat::{
-    supports_brightness, supports_flexbattery, supports_flexpuff, supports_smartgesture,
-};
 use crate::loader::parser::IQOSConsole;
 
 pub fn register_command(console: &mut IQOSConsole) {
@@ -31,28 +28,28 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
         println!("  autostart [on|off|status] Configure auto-start");
     }
     println!("  diagnosis          Retrieve telemetry data");
-    let has_device_commands = supports_brightness(model)
-        || supports_smartgesture(model)
-        || supports_flexpuff(model)
+    let has_device_commands = model.supports(DeviceCapability::Brightness)
+        || model.supports(DeviceCapability::SmartGesture)
+        || model.supports(DeviceCapability::FlexPuff)
         || model.supports(DeviceCapability::Vibration)
-        || supports_flexbattery(model);
+        || model.supports(DeviceCapability::FlexBattery);
 
     if has_device_commands {
         println!("\nDevice commands:");
     }
-    if supports_brightness(model) {
+    if model.supports(DeviceCapability::Brightness) {
         println!("  brightness [high|low]                     Set brightness");
     }
-    if supports_smartgesture(model) {
+    if model.supports(DeviceCapability::SmartGesture) {
         println!("  smartgesture [enable|disable]             Configure SmartGesture");
     }
-    if supports_flexpuff(model) {
+    if model.supports(DeviceCapability::FlexPuff) {
         println!("  flexpuff [enable|disable|status]          Configure FlexPuff");
     }
     if model.supports(DeviceCapability::Vibration) {
         println!("  vibration [heating|starting|terminated|puffend] [on|off] ...");
     }
-    if supports_flexbattery(model) {
+    if model.supports(DeviceCapability::FlexBattery) {
         println!("  flexbattery [performance|eco|pause on|off]");
     }
     println!("\n  info               Device metadata, firmware, and voltage snapshot");

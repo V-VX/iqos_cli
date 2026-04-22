@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{FlexPuffSetting, Iqos, IqosBle};
+use iqos::{DeviceCapability, FlexPuffSetting, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::loader::compat::supports_flexpuff;
 use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
@@ -26,8 +25,8 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let iqos = iqos.lock().await;
     let model = iqos.transport().model();
 
-    if !supports_flexpuff(model) {
-        println!("FlexPuff is only available on ILUMA i series devices");
+    if !model.supports(DeviceCapability::FlexPuff) {
+        println!("FlexPuff is not supported on this device");
         return Ok(());
     }
 

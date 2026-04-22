@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{BrightnessLevel, Iqos, IqosBle};
+use iqos::{BrightnessLevel, DeviceCapability, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::loader::compat::supports_brightness;
 use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
@@ -17,7 +16,11 @@ pub fn register_command(console: &mut IQOSConsole) {
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
 
-    if !supports_brightness(iqos.transport().model()) {
+    if !iqos
+        .transport()
+        .model()
+        .supports(DeviceCapability::Brightness)
+    {
         println!("Brightness not supported on this device");
         return Ok(());
     }

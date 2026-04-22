@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{Iqos, IqosBle};
+use iqos::{DeviceCapability, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::loader::compat::supports_smartgesture;
 use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
@@ -25,8 +24,8 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let iqos = iqos.lock().await;
     let model = iqos.transport().model();
 
-    if !supports_smartgesture(model) {
-        println!("SmartGesture is only available on ILUMA holder models");
+    if !model.supports(DeviceCapability::SmartGesture) {
+        println!("SmartGesture is not supported on this device");
         return Ok(());
     }
 

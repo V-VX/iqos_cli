@@ -4,7 +4,7 @@
 
 **A command-line interface for controlling IQOS devices via Bluetooth Low Energy, built on [V-VX/iqos](https://github.com/V-VX/iqos)**
 
-[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.92%2B-orange.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg?style=flat-square)](https://github.com/v-vx/iqos_cli)
 
@@ -49,8 +49,8 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 - **Vibration Customization** — Configure vibration for heating, puff-end, etc.
 - **FlexPuff** — Enable, disable, or check FlexPuff status (ILUMA i / ILUMA i Prime)
 - **FlexBattery** — Performance/Eco mode and pause mode (ILUMA i / ILUMA i Prime)
-- **Smart Gesture** — Enable/disable smart gesture recognition (ILUMA / ILUMA Prime / ILUMA i / ILUMA i Prime)
-- **AutoStart** — Automatic heating start (holder models)
+- **Smart Gesture** — Enable/disable smart gesture recognition (ILUMA / ILUMA Prime / ILUMA i / ILUMA i One / ILUMA i Prime)
+- **AutoStart** — Automatic heating start (ILUMA i series)
 - **Device Lock/Unlock** — Lock and unlock the device
 - **Diagnosis** — Puff count, days used, battery voltage
 - **Device Status** — Firmware, product number, and voltage snapshot
@@ -67,8 +67,8 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 | Device Lock/Unlock | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Vibration Settings | ✅¹ | ✅ | ✅ | ✅¹ | ✅ | ✅ |
 | Brightness | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Auto Start | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| Smart Gesture | ✅ | ❌ | ✅ | ✅ | ❌ | ✅ |
+| Auto Start | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Smart Gesture | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Flex Puff | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Flex Battery | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
 
@@ -76,7 +76,7 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 
 ## Prerequisites
 
-- **Rust 1.70 or later** — [Install Rust](https://rustup.rs/)
+- **Rust 1.92 or later** — [Install Rust](https://rustup.rs/)
 - **Bluetooth adapter** — A working Bluetooth adapter on your system
 - **Platform-specific dependencies**:
 
@@ -226,8 +226,8 @@ Vibration flags: `heating`, `starting`, `puffend`, `terminated`, `charge`¹
 | `flexbattery` | Show FlexBattery mode and pause state | ILUMA i / i Prime |
 | `flexbattery <performance\|eco>` | Set battery mode | ILUMA i / i Prime |
 | `flexbattery pause <on\|off>` | Toggle pause mode | ILUMA i / i Prime |
-| `smartgesture <enable\|disable>` | Toggle Smart Gesture | ILUMA / ILUMA Prime / ILUMA i / i Prime |
-| `autostart <on\|off\|status>` | Show or toggle automatic heating start | Holder models |
+| `smartgesture <enable\|disable>` | Toggle Smart Gesture | ILUMA / ILUMA Prime / ILUMA i / ILUMA i One / ILUMA i Prime |
+| `autostart <on\|off\|status>` | Show or toggle automatic heating start | ILUMA i / ILUMA i One / ILUMA i Prime |
 
 ## Examples
 

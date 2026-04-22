@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{FlexBatteryMode, FlexBatterySettings, Iqos, IqosBle};
+use iqos::{DeviceCapability, FlexBatteryMode, FlexBatterySettings, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::loader::compat::supports_flexbattery;
 use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
@@ -18,7 +17,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let iqos = iqos.lock().await;
     let model = iqos.transport().model();
 
-    if !supports_flexbattery(model) {
+    if !model.supports(DeviceCapability::FlexBattery) {
         println!("FlexBattery is only available on ILUMA i and ILUMA i PRIME devices");
         return Ok(());
     }
