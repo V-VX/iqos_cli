@@ -15,10 +15,12 @@ use iqos::{DeviceModel, Iqos, IqosBle};
 mod cli;
 mod config;
 mod loader;
+mod model_selector;
 
-use cli::{normalize_global_options, parse_device_model, scan_timeout, Cli, OneShotCommand};
-use config::{print_saved_devices, AppConfig, ConnectedDevice};
+use cli::{normalize_global_options, scan_timeout, Cli, OneShotCommand};
+use config::{print_saved_devices, validate_device_label, AppConfig, ConnectedDevice};
 use loader::{run_console_with_device, run_registered_command};
+use model_selector::parse_device_model;
 
 const EXIT_CONNECTION_FAILED: i32 = 1;
 const EXIT_INVALID_ARGUMENTS: i32 = 2;
@@ -54,6 +56,13 @@ enum ScanTarget {
 struct DiscoveredDevice {
     address: String,
     local_name: Option<String>,
+}
+
+#[derive(Debug)]
+struct ResolvedTarget {
+    config: AppConfig,
+    target: ScanTarget,
+    should_save_memory: bool,
 }
 
 async fn get_central(manager: &Manager) -> Result<Adapter> {
@@ -160,15 +169,15 @@ async fn run_auto_connected_console(
     model_arg: Option<String>,
     timeout: Duration,
 ) -> std::result::Result<(), ExitError> {
-    let mut config =
-        AppConfig::load().map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
-    let target = resolve_target(model_arg.as_deref(), &config)?;
+    let ResolvedTarget {
+        mut config,
+        target,
+        should_save_memory,
+    } = load_config_and_resolve_target(model_arg.as_deref(), true)?;
     let (iqos, device) = connect_target(&target, timeout).await?;
 
     apply_connection_memory(&mut config, &target, &device);
-    if let Err(error) = config.save() {
-        eprintln!("Warning: could not save device config: {error:#}");
-    }
+    save_connection_memory(&config, &target, should_save_memory, true)?;
 
     run_console_with_device(Iqos::new(iqos), device)
         .await
@@ -180,15 +189,16 @@ async fn run_one_shot(
     timeout: Duration,
     command: OneShotCommand,
 ) -> std::result::Result<(), ExitError> {
-    let mut config =
-        AppConfig::load().map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
-
     match command {
         OneShotCommand::DeviceList => {
+            let config =
+                AppConfig::load().map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
             print_saved_devices(&config);
             Ok(())
         }
         OneShotCommand::DeviceRemove { label } => {
+            let mut config =
+                AppConfig::load().map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
             if config.remove_device(&label) {
                 config
                     .save()
@@ -203,10 +213,16 @@ async fn run_one_shot(
             }
         }
         OneShotCommand::DeviceSave { label } => {
-            let target = resolve_target(model_arg.as_deref(), &config)?;
+            validate_device_label(&label)
+                .map_err(|error| ExitError::new(EXIT_INVALID_ARGUMENTS, error))?;
+            let ResolvedTarget {
+                mut config, target, ..
+            } = load_config_and_resolve_target(model_arg.as_deref(), false)?;
             let (iqos, device) = connect_target(&target, timeout).await?;
             apply_connection_memory(&mut config, &target, &device);
-            config.save_device(label.clone(), &device);
+            config
+                .save_device(label.clone(), &device)
+                .map_err(|error| ExitError::new(EXIT_INVALID_ARGUMENTS, error))?;
             config
                 .save()
                 .map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
@@ -215,17 +231,56 @@ async fn run_one_shot(
             Ok(())
         }
         OneShotCommand::Registered { name, args } => {
-            let target = resolve_target(model_arg.as_deref(), &config)?;
+            let ResolvedTarget {
+                config: mut command_config,
+                target,
+                should_save_memory,
+            } = load_config_and_resolve_target(model_arg.as_deref(), true)?;
             let (iqos, device) = connect_target(&target, timeout).await?;
-            apply_connection_memory(&mut config, &target, &device);
-            config
-                .save()
-                .map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
+            apply_connection_memory(&mut command_config, &target, &device);
+            save_connection_memory(&command_config, &target, should_save_memory, true)?;
 
             run_registered_command(Iqos::new(iqos), name, args)
                 .await
                 .map_err(|error| ExitError::new(classify_command_error(&error), error))
         }
+    }
+}
+
+fn load_config_and_resolve_target(
+    model_arg: Option<&str>,
+    allow_model_config_failure: bool,
+) -> std::result::Result<ResolvedTarget, ExitError> {
+    if let Some(value) = model_arg {
+        if let Some(model) = parse_device_model(value) {
+            let (config, should_save_memory) = load_memory_config(allow_model_config_failure)?;
+            return Ok(ResolvedTarget {
+                config,
+                target: ScanTarget::Model(model),
+                should_save_memory,
+            });
+        }
+    }
+
+    let config =
+        AppConfig::load().map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
+    let target = resolve_target(model_arg, &config)?;
+
+    Ok(ResolvedTarget {
+        config,
+        target,
+        should_save_memory: true,
+    })
+}
+
+fn load_memory_config(allow_failure: bool) -> std::result::Result<(AppConfig, bool), ExitError> {
+    match AppConfig::load() {
+        Ok(config) => Ok((config, true)),
+        Err(error) if allow_failure => {
+            eprintln!("Warning: could not load device config: {error:#}");
+            Ok((AppConfig::default(), false))
+        }
+        Err(error) => Err(ExitError::new(EXIT_CONNECTION_FAILED, error)),
     }
 }
 
@@ -266,6 +321,26 @@ fn resolve_target(
                 cached_serial: None,
             })
         }
+    }
+}
+
+fn save_connection_memory(
+    config: &AppConfig,
+    target: &ScanTarget,
+    should_save_memory: bool,
+    allow_model_save_failure: bool,
+) -> std::result::Result<(), ExitError> {
+    if !should_save_memory {
+        return Ok(());
+    }
+
+    match config.save() {
+        Ok(()) => Ok(()),
+        Err(error) if allow_model_save_failure && matches!(target, ScanTarget::Model(_)) => {
+            eprintln!("Warning: could not save device config: {error:#}");
+            Ok(())
+        }
+        Err(error) => Err(ExitError::new(EXIT_CONNECTION_FAILED, error)),
     }
 }
 

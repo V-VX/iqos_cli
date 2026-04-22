@@ -2,9 +2,11 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
-use anyhow::{Context as _, Result};
+use anyhow::{bail, Context as _, Result};
 use iqos::DeviceModel;
 use serde::{Deserialize, Serialize};
+
+use crate::model_selector::is_reserved_model_label;
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct AppConfig {
@@ -74,7 +76,9 @@ impl AppConfig {
         });
     }
 
-    pub fn save_device(&mut self, label: String, device: &ConnectedDevice) {
+    pub fn save_device(&mut self, label: String, device: &ConnectedDevice) -> Result<()> {
+        validate_device_label(&label)?;
+
         self.devices.insert(
             label,
             SavedDevice {
@@ -84,6 +88,8 @@ impl AppConfig {
                 serial_number: device.serial_number.clone(),
             },
         );
+
+        Ok(())
     }
 
     pub fn update_saved_device_metadata(&mut self, label: &str, device: &ConnectedDevice) {
@@ -103,6 +109,18 @@ impl AppConfig {
     pub fn remove_device(&mut self, label: &str) -> bool {
         self.devices.remove(label).is_some()
     }
+}
+
+pub fn validate_device_label(label: &str) -> Result<()> {
+    if label.trim().is_empty() {
+        bail!("Invalid label: label must not be empty");
+    }
+
+    if is_reserved_model_label(label) {
+        bail!("Invalid label: {label} is reserved for model selection");
+    }
+
+    Ok(())
 }
 
 pub fn config_file() -> PathBuf {
@@ -175,7 +193,7 @@ mod tests {
             serial_number: Some("SN123".to_string()),
         };
 
-        config.save_device("blackcat".to_string(), &device);
+        config.save_device("blackcat".to_string(), &device).unwrap();
 
         assert_eq!(
             config.devices.get("blackcat"),
@@ -186,5 +204,23 @@ mod tests {
                 serial_number: Some("SN123".to_string()),
             })
         );
+    }
+
+    #[test]
+    fn rejects_label_that_matches_model_selector() {
+        let mut config = AppConfig::default();
+        let device = ConnectedDevice {
+            address: "AA:BB:CC:DD:EE:FF".to_string(),
+            local_name: Some("IQOS ILUMA i".to_string()),
+            model: DeviceModel::IlumaI,
+            serial_number: Some("SN123".to_string()),
+        };
+
+        let error = config
+            .save_device("iluma-i".to_string(), &device)
+            .unwrap_err();
+
+        assert!(error.to_string().contains("reserved for model selection"));
+        assert!(config.devices.is_empty());
     }
 }

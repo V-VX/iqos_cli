@@ -28,7 +28,7 @@ fn save_device(label: &str, connected_device: Option<&ConnectedDevice>) -> Resul
 
     let mut config = AppConfig::load()?;
     config.update_default(device);
-    config.save_device(label.to_string(), device);
+    config.save_device(label.to_string(), device)?;
     config.save()?;
     println!("Saved device label: {label}");
     Ok(())

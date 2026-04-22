@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
-use iqos::DeviceModel;
 
 #[derive(Debug, Parser)]
 #[command(name = "iqos", version, about = "Control IQOS devices over BLE")]
@@ -153,20 +152,6 @@ fn registered(name: &'static str, mut args: Vec<String>) -> OneShotCommand {
     OneShotCommand::Registered { name, args }
 }
 
-pub fn parse_device_model(value: &str) -> Option<DeviceModel> {
-    let normalized = value.trim().to_ascii_lowercase().replace(['_', ' '], "-");
-
-    match normalized.as_str() {
-        "iluma" => Some(DeviceModel::Iluma),
-        "iluma-prime" => Some(DeviceModel::IlumaPrime),
-        "iluma-one" => Some(DeviceModel::IlumaOne),
-        "iluma-i" => Some(DeviceModel::IlumaI),
-        "iluma-i-prime" => Some(DeviceModel::IlumaIPrime),
-        "iluma-i-one" => Some(DeviceModel::IlumaIOne),
-        _ => None,
-    }
-}
-
 pub fn scan_timeout(cli_value: Option<u64>) -> Duration {
     let seconds = cli_value
         .or_else(|| {
@@ -245,6 +230,8 @@ pub fn should_use_cli(args: &[String]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model_selector::parse_device_model;
+    use iqos::DeviceModel;
 
     #[test]
     fn parses_supported_model_flags() {
