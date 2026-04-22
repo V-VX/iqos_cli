@@ -20,6 +20,10 @@ pub const fn supports_smartgesture(model: DeviceModel) -> bool {
     model.supports(DeviceCapability::SmartGesture)
 }
 
+pub const fn supports_autostart(model: DeviceModel) -> bool {
+    model.supports(DeviceCapability::AutoStart)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,8 +81,26 @@ mod tests {
             assert!(supports_smartgesture(model), "{model:?}");
         }
 
-        for model in [DeviceModel::IlumaOne] {
-            assert!(!supports_smartgesture(model), "{model:?}");
+        let model = DeviceModel::IlumaOne;
+        assert!(!supports_smartgesture(model), "{model:?}");
+    }
+
+    #[test]
+    fn autostart_supports_iluma_i_family_only() {
+        for model in [
+            DeviceModel::IlumaIOne,
+            DeviceModel::IlumaI,
+            DeviceModel::IlumaIPrime,
+        ] {
+            assert!(supports_autostart(model), "{model:?}");
+        }
+
+        for model in [
+            DeviceModel::IlumaOne,
+            DeviceModel::Iluma,
+            DeviceModel::IlumaPrime,
+        ] {
+            assert!(!supports_autostart(model), "{model:?}");
         }
     }
 }

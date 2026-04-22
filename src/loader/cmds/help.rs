@@ -5,7 +5,8 @@ use iqos::{DeviceCapability, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
 use crate::loader::compat::{
-    supports_brightness, supports_flexbattery, supports_flexpuff, supports_smartgesture,
+    supports_autostart, supports_brightness, supports_flexbattery, supports_flexpuff,
+    supports_smartgesture,
 };
 use crate::loader::parser::IQOSConsole;
 
@@ -27,7 +28,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
     if model.supports(DeviceCapability::DeviceLock) {
         println!("  lock | unlock      Lock or unlock the device");
     }
-    if model.supports(DeviceCapability::AutoStart) {
+    if supports_autostart(model) {
         println!("  autostart [on|off|status] Configure auto-start");
     }
     println!("  diagnosis          Retrieve telemetry data");
