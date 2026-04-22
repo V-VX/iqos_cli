@@ -169,6 +169,8 @@ async fn run_auto_connected_console(
     model_arg: Option<String>,
     timeout: Duration,
 ) -> std::result::Result<(), ExitError> {
+    print_ascii_art();
+
     let ResolvedTarget {
         mut config,
         target,
@@ -424,7 +426,7 @@ async fn find_matching_peripheral(
 
 async fn run_interactive() -> Result<()> {
     let manager = Manager::new().await?;
-    println!("{}", IQOS_CLI_ASCII_ART.blue());
+    print_ascii_art();
 
     let central = get_central(&manager).await?;
     let central_state = central.adapter_state().await?;
@@ -470,6 +472,10 @@ async fn run_interactive() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn print_ascii_art() {
+    println!("{}", IQOS_CLI_ASCII_ART.blue());
 }
 
 fn remember_connected_device(device: &ConnectedDevice) {
