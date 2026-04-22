@@ -70,13 +70,14 @@ mod tests {
         for model in [
             DeviceModel::Iluma,
             DeviceModel::IlumaPrime,
+            DeviceModel::IlumaIOne,
             DeviceModel::IlumaI,
             DeviceModel::IlumaIPrime,
         ] {
             assert!(supports_smartgesture(model), "{model:?}");
         }
 
-        for model in [DeviceModel::IlumaOne, DeviceModel::IlumaIOne] {
+        for model in [DeviceModel::IlumaOne] {
             assert!(!supports_smartgesture(model), "{model:?}");
         }
     }
