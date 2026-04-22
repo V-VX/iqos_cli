@@ -26,7 +26,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let model = iqos.transport().model();
 
     if !model.supports(DeviceCapability::FlexPuff) {
-        println!("FlexPuff is only available on ILUMA i series devices");
+        println!("FlexPuff is not supported on this device");
         return Ok(());
     }
 
