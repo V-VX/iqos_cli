@@ -351,9 +351,7 @@ async fn run_interactive() -> Result<()> {
                         println!("Connecting...");
                         let ble = IqosBle::connect_and_discover(peripheral).await?;
                         let device = connected_device(&ble, discovered);
-                        let mut config = AppConfig::load()?;
-                        config.update_default(&device);
-                        config.save()?;
+                        remember_connected_device(&device);
                         let iqos = Iqos::new(ble);
                         central.stop_scan().await?;
                         run_console_with_device(iqos, device).await?;
@@ -372,6 +370,18 @@ async fn run_interactive() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn remember_connected_device(device: &ConnectedDevice) {
+    match AppConfig::load() {
+        Ok(mut config) => {
+            config.update_default(device);
+            if let Err(error) = config.save() {
+                eprintln!("Warning: could not save device config: {error:#}");
+            }
+        }
+        Err(error) => eprintln!("Warning: could not load device config: {error:#}"),
+    }
 }
 
 fn discovered_device(

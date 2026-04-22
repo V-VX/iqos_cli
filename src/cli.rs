@@ -27,14 +27,22 @@ pub struct Cli {
 pub enum CliCommand {
     /// Configure auto-start.
     Autostart {
-        #[arg(value_name = "arg")]
+        #[arg(
+            value_name = "arg",
+            allow_hyphen_values = true,
+            trailing_var_arg = true
+        )]
         args: Vec<String>,
     },
     /// Display battery level.
     Battery,
     /// Set display brightness.
     Brightness {
-        #[arg(value_name = "arg")]
+        #[arg(
+            value_name = "arg",
+            allow_hyphen_values = true,
+            trailing_var_arg = true
+        )]
         args: Vec<String>,
     },
     /// Manage saved devices.
@@ -48,12 +56,20 @@ pub enum CliCommand {
     Findmyiqos,
     /// Configure FlexBattery.
     Flexbattery {
-        #[arg(value_name = "arg")]
+        #[arg(
+            value_name = "arg",
+            allow_hyphen_values = true,
+            trailing_var_arg = true
+        )]
         args: Vec<String>,
     },
     /// Configure FlexPuff.
     Flexpuff {
-        #[arg(value_name = "arg")]
+        #[arg(
+            value_name = "arg",
+            allow_hyphen_values = true,
+            trailing_var_arg = true
+        )]
         args: Vec<String>,
     },
     /// Display command help for the connected device.
@@ -64,14 +80,22 @@ pub enum CliCommand {
     Lock,
     /// Configure SmartGesture.
     Smartgesture {
-        #[arg(value_name = "arg")]
+        #[arg(
+            value_name = "arg",
+            allow_hyphen_values = true,
+            trailing_var_arg = true
+        )]
         args: Vec<String>,
     },
     /// Unlock the device.
     Unlock,
     /// Configure vibration feedback.
     Vibration {
-        #[arg(value_name = "arg")]
+        #[arg(
+            value_name = "arg",
+            allow_hyphen_values = true,
+            trailing_var_arg = true
+        )]
         args: Vec<String>,
     },
 }
@@ -206,6 +230,25 @@ mod tests {
                     "on".to_string()
                 ],
             }
+        );
+    }
+
+    #[test]
+    fn passthrough_commands_accept_hyphen_prefixed_values() {
+        let cli = Cli::try_parse_from(["iqos", "vibration", "heating", "-badflag", "--also-value"])
+            .unwrap();
+
+        assert_eq!(
+            cli.command.map(CliCommand::into_one_shot),
+            Some(OneShotCommand::Registered {
+                name: "vibration",
+                args: vec![
+                    "vibration".to_string(),
+                    "heating".to_string(),
+                    "-badflag".to_string(),
+                    "--also-value".to_string(),
+                ],
+            })
         );
     }
 

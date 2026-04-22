@@ -107,7 +107,10 @@ impl AppConfig {
 
 pub fn config_file() -> PathBuf {
     if let Some(path) = std::env::var_os("XDG_CONFIG_HOME") {
-        return PathBuf::from(path).join("iqos_cli").join("config.toml");
+        let path = PathBuf::from(path);
+        if path.is_absolute() {
+            return path.join("iqos_cli").join("config.toml");
+        }
     }
 
     if let Some(home) = dirs::home_dir() {
