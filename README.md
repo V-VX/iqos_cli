@@ -343,6 +343,30 @@ cargo clippy -- -D warnings  # Lint
 cargo check            # Fast type-check without linking
 ```
 
+### Release Workflow
+
+Releases are created automatically when a semantic version tag is pushed:
+
+```bash
+git tag -s v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
+The release workflow validates tags like `v1.2.3` or `v1.2.3-rc.1`, verifies that the pushed tag already exists, then creates a GitHub Release with generated notes. Tags with a prerelease suffix, such as `-rc.1`, are published as prereleases.
+
+Generated release notes are grouped by PR labels using `.github/release.yml`. Use clear PR titles and apply one of these labels before merging:
+
+| Label | Release notes section |
+|-------|-----------------------|
+| `breaking`, `breaking-change`, `semver-major` | Breaking Changes |
+| `feature`, `enhancement`, `semver-minor` | Features |
+| `bug`, `fix`, `semver-patch` | Fixes |
+| `documentation`, `docs` | Documentation |
+| `chore`, `refactor`, `dependencies`, `ci`, `tests` | Maintenance |
+| `skip-changelog`, `ignore-for-release` | Excluded from release notes |
+
+GitHub Releases are the project changelog. Keep merged PR titles user-facing because they become the release-note entries.
+
 ## Contributing
 
 1. Fork the repository
