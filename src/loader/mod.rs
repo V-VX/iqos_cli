@@ -4,4 +4,4 @@ pub mod iqoshelper;
 pub mod parser;
 
 // Re-export essential components for ease of use
-pub use parser::run_console;
+pub use parser::{run_console, run_registered_command};

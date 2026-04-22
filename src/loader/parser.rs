@@ -28,12 +28,12 @@ impl IQOSConsole {
         self.commands.insert(name.to_string(), command);
     }
 
-    async fn execute_command(&self, command: &str, args: Vec<String>) -> Result<()> {
+    pub async fn execute_command(&self, command: &str, args: Vec<String>) -> Result<bool> {
         if let Some(cmd) = self.commands.get(command) {
-            cmd(self.iqos.clone(), args).await
+            cmd(self.iqos.clone(), args).await?;
+            Ok(true)
         } else {
-            println!("Unknown command: {command}");
-            Ok(())
+            Ok(false)
         }
     }
 
@@ -65,8 +65,10 @@ impl IQOSConsole {
                         println!("Goodbye!");
                         break;
                     }
-                    if let Err(e) = self.execute_command(&cmd, args).await {
-                        eprintln!("Error: {e}");
+                    match self.execute_command(&cmd, args).await {
+                        Ok(true) => {}
+                        Ok(false) => println!("Unknown command: {cmd}"),
+                        Err(e) => eprintln!("Error: {e}"),
                     }
                 }
                 Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => break,
@@ -88,6 +90,20 @@ pub async fn run_console(iqos: Iqos<IqosBle>) -> Result<()> {
     let mut console = IQOSConsole::new(iqos);
     register_all_commands(&mut console);
     console.run().await
+}
+
+pub async fn run_registered_command(
+    iqos: Iqos<IqosBle>,
+    command: &str,
+    args: Vec<String>,
+) -> Result<()> {
+    let mut console = IQOSConsole::new(iqos);
+    register_all_commands(&mut console);
+    if console.execute_command(command, args).await? {
+        Ok(())
+    } else {
+        anyhow::bail!("Unknown command: {command}");
+    }
 }
 
 fn register_all_commands(console: &mut IQOSConsole) {
