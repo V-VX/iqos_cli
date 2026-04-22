@@ -117,6 +117,27 @@ pub fn config_file() -> PathBuf {
     std::env::temp_dir().join("iqos_cli").join("config.toml")
 }
 
+pub fn print_saved_devices(config: &AppConfig) {
+    if config.devices.is_empty() {
+        println!("No saved devices");
+        return;
+    }
+
+    for (label, device) in &config.devices {
+        println!("{label}");
+        println!("  address: {}", device.address);
+        if let Some(local_name) = &device.local_name {
+            println!("  local_name: {local_name}");
+        }
+        if let Some(model) = &device.model {
+            println!("  model: {model}");
+        }
+        if let Some(serial_number) = &device.serial_number {
+            println!("  serial_number: {serial_number}");
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

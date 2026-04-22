@@ -10,6 +10,7 @@ const COMMANDS: &[&str] = &[
     "autostart",
     "battery",
     "brightness",
+    "device",
     "diagnosis",
     "exit",
     "findmyiqos",
@@ -25,6 +26,7 @@ const COMMANDS: &[&str] = &[
 ];
 const AUTOSTART_ARGS: &[&str] = &["on", "off", "enable", "disable", "status"];
 const BRIGHTNESS_ARGS: &[&str] = &["high", "low"];
+const DEVICE_ARGS: &[&str] = &["list", "save", "remove"];
 const FLEXBATTERY_ARGS: &[&str] = &["performance", "eco", "pause"];
 const FLEXPUFF_ARGS: &[&str] = &["enable", "disable", "status"];
 const SMART_GESTURE_ARGS: &[&str] = &["enable", "disable"];
@@ -95,6 +97,7 @@ impl Completer for IqosHelper {
             let candidates = match cmd {
                 "autostart" => matching_pairs(AUTOSTART_ARGS, subcmd),
                 "brightness" => matching_pairs(BRIGHTNESS_ARGS, subcmd),
+                "device" => matching_pairs(DEVICE_ARGS, subcmd),
                 "flexbattery" => matching_pairs(FLEXBATTERY_ARGS, subcmd),
                 "flexpuff" => matching_pairs(FLEXPUFF_ARGS, subcmd),
                 "smartgesture" => matching_pairs(SMART_GESTURE_ARGS, subcmd),
@@ -178,11 +181,16 @@ mod tests {
     }
 
     #[test]
-    fn does_not_complete_removed_device_status_command() {
+    fn completes_device_subcommands() {
         let (start, candidates) = complete("device");
 
         assert_eq!(start, 0);
-        assert!(candidates.is_empty());
+        assert_eq!(candidates, vec!["device"]);
+
+        let (start, candidates) = complete("device ");
+
+        assert_eq!(start, "device ".len());
+        assert_eq!(candidates, vec!["list", "save", "remove"]);
     }
 
     #[test]

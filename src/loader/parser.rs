@@ -8,19 +8,29 @@ use rustyline::error::ReadlineError;
 use rustyline::{Config, Editor};
 use tokio::sync::Mutex;
 
+use crate::config::ConnectedDevice;
 use crate::loader::cmds::command::{CommandFn, CommandRegistry};
 use crate::loader::iqoshelper::IqosHelper;
 
 pub struct IQOSConsole {
     commands: CommandRegistry,
     iqos: Arc<Mutex<Iqos<IqosBle>>>,
+    connected_device: Option<ConnectedDevice>,
 }
 
 impl IQOSConsole {
     pub fn new(iqos: Iqos<IqosBle>) -> Self {
+        Self::with_connected_device(iqos, None)
+    }
+
+    pub fn with_connected_device(
+        iqos: Iqos<IqosBle>,
+        connected_device: Option<ConnectedDevice>,
+    ) -> Self {
         Self {
             commands: HashMap::with_capacity(16),
             iqos: Arc::new(Mutex::new(iqos)),
+            connected_device,
         }
     }
 
@@ -29,6 +39,11 @@ impl IQOSConsole {
     }
 
     pub async fn execute_command(&self, command: &str, args: Vec<String>) -> Result<bool> {
+        if command == "device" {
+            crate::loader::cmds::device::execute(args, self.connected_device.as_ref()).await?;
+            return Ok(true);
+        }
+
         if let Some(cmd) = self.commands.get(command) {
             cmd(self.iqos.clone(), args).await?;
             Ok(true)
@@ -86,8 +101,15 @@ impl IQOSConsole {
     }
 }
 
+#[allow(dead_code)]
 pub async fn run_console(iqos: Iqos<IqosBle>) -> Result<()> {
     let mut console = IQOSConsole::new(iqos);
+    register_all_commands(&mut console);
+    console.run().await
+}
+
+pub async fn run_console_with_device(iqos: Iqos<IqosBle>, device: ConnectedDevice) -> Result<()> {
+    let mut console = IQOSConsole::with_connected_device(iqos, Some(device));
     register_all_commands(&mut console);
     console.run().await
 }

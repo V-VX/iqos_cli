@@ -17,8 +17,8 @@ mod config;
 mod loader;
 
 use cli::{parse_device_model, scan_timeout, Cli, OneShotCommand};
-use config::{AppConfig, ConnectedDevice};
-use loader::{run_console, run_registered_command};
+use config::{print_saved_devices, AppConfig, ConnectedDevice};
+use loader::{run_console_with_device, run_registered_command};
 
 const EXIT_CONNECTION_FAILED: i32 = 1;
 const EXIT_INVALID_ARGUMENTS: i32 = 2;
@@ -356,7 +356,7 @@ async fn run_interactive() -> Result<()> {
                         config.save()?;
                         let iqos = Iqos::new(ble);
                         central.stop_scan().await?;
-                        run_console(iqos).await?;
+                        run_console_with_device(iqos, device).await?;
                         return Ok(());
                     }
 
@@ -442,27 +442,6 @@ fn warn_serial_mismatch(target: &ScanTarget, device: &ConnectedDevice) {
         eprintln!(
             "Warning: serial number mismatch for {target_name}: cached {cached_serial}, connected {actual_serial}"
         );
-    }
-}
-
-fn print_saved_devices(config: &AppConfig) {
-    if config.devices.is_empty() {
-        println!("No saved devices");
-        return;
-    }
-
-    for (label, device) in &config.devices {
-        println!("{label}");
-        println!("  address: {}", device.address);
-        if let Some(local_name) = &device.local_name {
-            println!("  local_name: {local_name}");
-        }
-        if let Some(model) = &device.model {
-            println!("  model: {model}");
-        }
-        if let Some(serial_number) = &device.serial_number {
-            println!("  serial_number: {serial_number}");
-        }
     }
 }
 
