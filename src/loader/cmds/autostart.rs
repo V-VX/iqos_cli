@@ -26,7 +26,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
     let model = iqos.transport().model();
 
     if !model.supports(DeviceCapability::AutoStart) {
-        println!("Autostart is not supported on this device");
+        println!("AutoStart is not supported on this device");
         return Ok(());
     }
 
