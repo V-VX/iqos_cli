@@ -65,14 +65,14 @@ jobs:
             package: windows-x86_64
             target: x86_64-pc-windows-msvc
             archive: zip
-          - os: macos-13
+          - os: macos-15-intel
             package: macos-universal
             target: universal-apple-darwin
             archive: tar.gz
 
     steps:
       - name: Checkout tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.validate.outputs.tag }}
 
@@ -133,7 +133,7 @@ jobs:
           Compress-Archive -Path "dist/$name/*" -DestinationPath "dist/$name.zip" -Force
 
       - name: Upload package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: iqos-cli-${{ matrix.package }}
           path: dist/iqos_cli-${{ needs.validate.outputs.tag }}-${{ matrix.package }}.${{ matrix.archive }}
@@ -148,7 +148,7 @@ jobs:
 
     steps:
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: release-assets
           pattern: iqos-cli-*
