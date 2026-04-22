@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -11,6 +12,45 @@ use tokio::sync::Mutex;
 use crate::config::ConnectedDevice;
 use crate::loader::cmds::command::{CommandFn, CommandRegistry};
 use crate::loader::iqoshelper::IqosHelper;
+
+#[derive(Debug)]
+pub enum CommandError {
+    InvalidArguments(String),
+    DeviceFailure(String),
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidArguments(message) | Self::DeviceFailure(message) => f.write_str(message),
+        }
+    }
+}
+
+impl std::error::Error for CommandError {}
+
+impl CommandError {
+    pub fn invalid_arguments(message: impl Into<String>) -> Self {
+        Self::InvalidArguments(message.into())
+    }
+
+    fn classify(error: anyhow::Error) -> Self {
+        let message = error.to_string();
+        if is_invalid_argument_message(&message) {
+            Self::InvalidArguments(message)
+        } else {
+            Self::DeviceFailure(message)
+        }
+    }
+}
+
+pub fn is_invalid_argument_message(message: &str) -> bool {
+    message.starts_with("Usage:")
+        || message.starts_with("Invalid option:")
+        || message.starts_with("Invalid pause value:")
+        || message.starts_with("Each flag requires")
+        || message.starts_with("Unknown command:")
+}
 
 pub struct IQOSConsole {
     commands: CommandRegistry,
@@ -121,10 +161,12 @@ pub async fn run_registered_command(
 ) -> Result<()> {
     let mut console = IQOSConsole::new(iqos);
     register_all_commands(&mut console);
-    if console.execute_command(command, args).await? {
-        Ok(())
-    } else {
-        anyhow::bail!("Unknown command: {command}");
+    match console.execute_command(command, args).await {
+        Ok(true) => Ok(()),
+        Ok(false) => {
+            Err(CommandError::invalid_arguments(format!("Unknown command: {command}")).into())
+        }
+        Err(error) => Err(CommandError::classify(error).into()),
     }
 }
 

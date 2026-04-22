@@ -1,5 +1,8 @@
 use std::collections::BTreeMap;
-use std::fs;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::PathBuf;
 
 use anyhow::{bail, Context as _, Result};
@@ -67,7 +70,26 @@ impl AppConfig {
         }
 
         let contents = toml::to_string_pretty(self)?;
-        fs::write(&path, contents).with_context(|| format!("failed to write {}", path.display()))
+        let mut options = OpenOptions::new();
+        options.write(true).create(true).truncate(true);
+
+        #[cfg(unix)]
+        {
+            options.mode(0o600);
+        }
+
+        let mut file = options
+            .open(&path)
+            .with_context(|| format!("failed to write {}", path.display()))?;
+
+        #[cfg(unix)]
+        file.set_permissions(fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("failed to set permissions on {}", path.display()))?;
+
+        file.write_all(contents.as_bytes())
+            .with_context(|| format!("failed to write {}", path.display()))?;
+        file.flush()
+            .with_context(|| format!("failed to write {}", path.display()))
     }
 
     pub fn update_default(&mut self, device: &ConnectedDevice) {
@@ -124,15 +146,25 @@ pub fn validate_device_label(label: &str) -> Result<()> {
 }
 
 pub fn config_file() -> PathBuf {
-    if let Some(path) = std::env::var_os("XDG_CONFIG_HOME") {
-        let path = PathBuf::from(path);
+    let xdg_config_home = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from);
+    config_file_from(xdg_config_home, dirs::home_dir())
+}
+
+fn config_file_from(xdg_config_home: Option<PathBuf>, home: Option<PathBuf>) -> PathBuf {
+    if let Some(path) = xdg_config_home {
         if path.is_absolute() {
             return path.join("iqos_cli").join("config.toml");
         }
     }
 
-    if let Some(home) = dirs::home_dir() {
-        return home.join(".config").join("iqos_cli").join("config.toml");
+    if let Some(home) = home {
+        let xdg_path = home.join(".config").join("iqos_cli").join("config.toml");
+        let legacy_path = home.join(".iqos_cli").join("config.toml");
+        if legacy_path.exists() && !xdg_path.exists() {
+            return legacy_path;
+        }
+
+        return xdg_path;
     }
 
     std::env::temp_dir().join("iqos_cli").join("config.toml")
@@ -162,6 +194,8 @@ pub fn print_saved_devices(config: &AppConfig) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn stores_default_address_only() {
@@ -222,5 +256,66 @@ mod tests {
 
         assert!(error.to_string().contains("reserved for model selection"));
         assert!(config.devices.is_empty());
+    }
+
+    #[test]
+    fn uses_existing_legacy_config_as_home_fallback() {
+        let temp = unique_temp_dir("legacy-config");
+        let legacy = temp.join(".iqos_cli").join("config.toml");
+        fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        fs::write(&legacy, "").unwrap();
+
+        assert_eq!(config_file_from(None, Some(temp.clone())), legacy);
+
+        fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[test]
+    fn prefers_xdg_config_when_present() {
+        let temp = unique_temp_dir("xdg-config");
+        let home = temp.join("home");
+        let xdg = temp.join("xdg");
+
+        assert_eq!(
+            config_file_from(Some(xdg.clone()), Some(home)),
+            xdg.join("iqos_cli").join("config.toml")
+        );
+
+        fs::remove_dir_all(temp).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_to_restricts_config_permissions() {
+        let temp = unique_temp_dir("config-permissions");
+        let path = temp.join("config.toml");
+        let mut config = AppConfig::default();
+        let device = ConnectedDevice {
+            address: "AA:BB:CC:DD:EE:FF".to_string(),
+            local_name: Some("IQOS ILUMA i".to_string()),
+            model: DeviceModel::IlumaI,
+            serial_number: Some("SN123".to_string()),
+        };
+        config.update_default(&device);
+
+        config.save_to(path.clone()).unwrap();
+
+        let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600);
+
+        fs::remove_dir_all(temp).unwrap();
+    }
+
+    fn unique_temp_dir(name: &str) -> PathBuf {
+        let path = std::env::temp_dir().join(format!(
+            "iqos_cli_{name}_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&path).unwrap();
+        path
     }
 }

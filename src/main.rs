@@ -19,6 +19,7 @@ mod model_selector;
 
 use cli::{normalize_global_options, scan_timeout, Cli, OneShotCommand};
 use config::{print_saved_devices, validate_device_label, AppConfig, ConnectedDevice};
+use loader::parser::{is_invalid_argument_message, CommandError};
 use loader::{run_console_with_device, run_registered_command};
 use model_selector::parse_device_model;
 
@@ -193,18 +194,18 @@ async fn run_one_shot(
 ) -> std::result::Result<(), ExitError> {
     match command {
         OneShotCommand::DeviceList => {
-            let config =
-                AppConfig::load().map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
+            let config = AppConfig::load()
+                .map_err(|error| ExitError::new(EXIT_DEVICE_COMMAND_FAILED, error))?;
             print_saved_devices(&config);
             Ok(())
         }
         OneShotCommand::DeviceRemove { label } => {
-            let mut config =
-                AppConfig::load().map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
+            let mut config = AppConfig::load()
+                .map_err(|error| ExitError::new(EXIT_DEVICE_COMMAND_FAILED, error))?;
             if config.remove_device(&label) {
                 config
                     .save()
-                    .map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
+                    .map_err(|error| ExitError::new(EXIT_DEVICE_COMMAND_FAILED, error))?;
                 println!("Removed device label: {label}");
                 Ok(())
             } else {
@@ -227,7 +228,7 @@ async fn run_one_shot(
                 .map_err(|error| ExitError::new(EXIT_INVALID_ARGUMENTS, error))?;
             config
                 .save()
-                .map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
+                .map_err(|error| ExitError::new(EXIT_DEVICE_COMMAND_FAILED, error))?;
             drop(iqos);
             println!("Saved device label: {label}");
             Ok(())
@@ -562,13 +563,14 @@ fn warn_serial_mismatch(target: &ScanTarget, device: &ConnectedDevice) {
 }
 
 fn classify_command_error(error: &anyhow::Error) -> i32 {
-    let message = error.to_string();
-    if message.starts_with("Usage:")
-        || message.starts_with("Invalid option:")
-        || message.starts_with("Invalid pause value:")
-        || message.starts_with("Each flag requires")
-        || message.starts_with("Unknown command:")
-    {
+    if let Some(command_error) = error.downcast_ref::<CommandError>() {
+        return match command_error {
+            CommandError::InvalidArguments(_) => EXIT_INVALID_ARGUMENTS,
+            CommandError::DeviceFailure(_) => EXIT_DEVICE_COMMAND_FAILED,
+        };
+    }
+
+    if is_invalid_argument_message(&error.to_string()) {
         EXIT_INVALID_ARGUMENTS
     } else {
         EXIT_DEVICE_COMMAND_FAILED

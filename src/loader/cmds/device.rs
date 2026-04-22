@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 
-use crate::config::{print_saved_devices, AppConfig, ConnectedDevice};
+use crate::config::{print_saved_devices, validate_device_label, AppConfig, ConnectedDevice};
 
 pub async fn execute(args: Vec<String>, connected_device: Option<&ConnectedDevice>) -> Result<()> {
     match args.get(1).map(String::as_str) {
@@ -27,8 +27,9 @@ fn save_device(label: &str, connected_device: Option<&ConnectedDevice>) -> Resul
     };
 
     let mut config = AppConfig::load()?;
-    config.update_default(device);
+    validate_device_label(label)?;
     config.save_device(label.to_string(), device)?;
+    config.update_default(device);
     config.save()?;
     println!("Saved device label: {label}");
     Ok(())
