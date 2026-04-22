@@ -4,12 +4,7 @@ use clap::{Parser, Subcommand};
 use iqos::DeviceModel;
 
 #[derive(Debug, Parser)]
-#[command(
-    name = "iqos",
-    version,
-    about = "Control IQOS devices over BLE",
-    disable_help_subcommand = true
-)]
+#[command(name = "iqos", version, about = "Control IQOS devices over BLE")]
 pub struct Cli {
     /// Target device model or saved device label.
     #[arg(long, value_name = "target")]
@@ -72,8 +67,6 @@ pub enum CliCommand {
         )]
         args: Vec<String>,
     },
-    /// Display command help for the connected device.
-    Help,
     /// Device metadata, firmware, and voltage snapshot.
     Info,
     /// Lock the device.
@@ -146,7 +139,6 @@ impl CliCommand {
             Self::Findmyiqos => registered("findmyiqos", Vec::new()),
             Self::Flexbattery { args } => registered("flexbattery", args),
             Self::Flexpuff { args } => registered("flexpuff", args),
-            Self::Help => registered("help", Vec::new()),
             Self::Info => registered("info", Vec::new()),
             Self::Lock => registered("lock", Vec::new()),
             Self::Smartgesture { args } => registered("smartgesture", args),
@@ -401,6 +393,14 @@ mod tests {
         assert!(!should_use_cli(&["iqos".to_string()]));
         assert!(should_use_cli(&["iqos".to_string(), "--help".to_string()]));
         assert!(should_use_cli(&["iqos".to_string(), "battery".to_string()]));
+    }
+
+    #[test]
+    fn help_subcommand_uses_clap_top_level_help() {
+        let error = Cli::try_parse_from(["iqos", "help"]).unwrap_err();
+
+        assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
+        assert_eq!(error.exit_code(), 0);
     }
 
     fn strings(values: impl IntoIterator<Item = &'static str>) -> Vec<String> {
