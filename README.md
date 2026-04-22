@@ -32,7 +32,7 @@
 
 ## Overview
 
-IQOS CLI is a Rust-based command-line tool for controlling IQOS devices over Bluetooth Low Energy, built on top of [V-VX/iqos](https://github.com/V-VX/iqos). It scans for nearby devices, prompts for a connection, then drops into an interactive REPL for device control.
+IQOS CLI is a Rust-based command-line tool for controlling IQOS devices over Bluetooth Low Energy, built on top of [V-VX/iqos](https://github.com/V-VX/iqos). It supports both an interactive REPL and one-shot command execution, so you can either connect once and work from the `iqos>` prompt or run a single command directly from your shell.
 
 ## Architecture
 
@@ -42,6 +42,8 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 
 - **Automatic Device Discovery** — Scans and connects to IQOS devices via Bluetooth
 - **Interactive Console** — REPL with command history (`iqos>` prompt)
+- **One-Shot CLI Commands** — Run device commands directly, for example `iqos --model iluma battery`
+- **Saved Device Labels** — Remember a connected device and target it later with `--model <label>`
 - **Battery Management** — Real-time battery status
 - **Brightness Control** — Set LED brightness (all ILUMA models)
 - **Vibration Customization** — Configure vibration for heating, puff-end, etc.
@@ -104,13 +106,17 @@ cargo install --path .
 
 ## Quick Start
 
+Examples below use `iqos` as the command name. When running directly from this repository, use `./target/release/iqos_cli` or `cargo run --release --` in its place.
+
+### Interactive Mode
+
 1. Enable Bluetooth on your system
 2. Turn on your IQOS device and ensure it's in range
 3. Run IQOS CLI:
    ```bash
-   iqos_cli
+   iqos
    # or during development
-   cargo run --release
+   cargo run --release --
    ```
 4. Select your device when prompted:
    ```
@@ -130,7 +136,41 @@ cargo install --path .
    FlexBattery settings updated
    ```
 
+### One-Shot CLI Mode
+
+Run a single command without opening the REPL:
+
+```bash
+iqos --model iluma battery
+iqos brightness high --model iluma
+iqos vibration heating on --model iluma-i --timeout 5
+```
+
+`--model` accepts either a built-in model selector or a saved device label. Global options can be placed before the command, after the command, or between command arguments; the CLI normalizes them before execution.
+
+If you pass only a target option and no subcommand, IQOS CLI connects to that target and then starts interactive mode:
+
+```bash
+iqos --model minera
+```
+
+This is useful after saving a device label, because it skips the manual "Connect?" prompt and connects directly to the saved device.
+
 ## Commands Reference
+
+### CLI Invocation
+
+| Command | Description |
+|---------|-------------|
+| `iqos` | Scan nearby IQOS devices, ask which one to connect to, then open interactive mode |
+| `iqos --help` | Show top-level CLI help |
+| `iqos help` | Same as `iqos --help` |
+| `iqos --model <model-or-label>` | Connect to a built-in model selector or saved label, then open interactive mode |
+| `iqos --model <model-or-label> <command>` | Connect to the selected target and run one command |
+| `iqos <command> --model <model-or-label>` | Same as above; global options may be placed after the command |
+| `iqos --timeout <secs> ...` | Override the BLE scan timeout |
+
+Built-in model selectors include `iluma`, `iluma-one`, `iluma-prime`, `iluma-i`, `iluma-i-one`, and `iluma-i-prime`. Saved labels are managed with the `device` command.
 
 ### General
 
@@ -144,6 +184,24 @@ cargo install --path .
 | `unlock` | Unlock the device |
 | `findmyiqos` | Vibrate the device until Enter is pressed |
 | `exit` / `quit` | Exit the CLI |
+
+### Device Memory
+
+| Command | Description |
+|---------|-------------|
+| `device list` | List saved device labels and metadata |
+| `device save <label>` | Save the current or targeted device under a label |
+| `device remove <label>` | Remove a saved device label |
+
+Device memory is stored in `config.toml` under the user config directory. The CLI also remembers the last successfully connected device as the default target. That lets you run commands like `iqos battery` after a device has been remembered once. Use labels when you want a stable name for a specific device:
+
+```bash
+iqos --model iluma device save minera
+iqos device list
+iqos --model minera battery
+iqos --model minera
+iqos device remove minera
+```
 
 ### Display & Feedback
 
