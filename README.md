@@ -226,8 +226,8 @@ Vibration flags: `heating`, `starting`, `puffend`, `terminated`, `charge`¹
 | `flexbattery` | Show FlexBattery mode and pause state | ILUMA i / i Prime |
 | `flexbattery <performance\|eco>` | Set battery mode | ILUMA i / i Prime |
 | `flexbattery pause <on\|off>` | Toggle pause mode | ILUMA i / i Prime |
-| `smartgesture <enable\|disable>` | Toggle Smart Gesture | ILUMA / ILUMA Prime / ILUMA i / i One / i Prime |
-| `autostart <on\|off\|status>` | Show or toggle automatic heating start | ILUMA i / i One / i Prime |
+| `smartgesture <enable\|disable>` | Toggle Smart Gesture | ILUMA / ILUMA Prime / ILUMA i / ILUMA i One / ILUMA i Prime |
+| `autostart <on\|off\|status>` | Show or toggle automatic heating start | ILUMA i / ILUMA i One / ILUMA i Prime |
 
 ## Examples
 
