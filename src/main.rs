@@ -18,7 +18,9 @@ mod loader;
 mod model_selector;
 
 use cli::{normalize_global_options, scan_timeout, Cli, OneShotCommand};
-use config::{print_saved_devices, validate_device_label, AppConfig, ConnectedDevice};
+use config::{
+    normalize_device_label, print_saved_devices, validate_device_label, AppConfig, ConnectedDevice,
+};
 use loader::parser::{is_invalid_argument_message, CommandError};
 use loader::{run_console_with_device, run_registered_command};
 use model_selector::parse_device_model;
@@ -200,9 +202,14 @@ async fn run_one_shot(
             Ok(())
         }
         OneShotCommand::DeviceRemove { label } => {
+            let label = normalize_device_label(&label)
+                .map_err(|error| ExitError::new(EXIT_INVALID_ARGUMENTS, error))?;
             let mut config = AppConfig::load()
                 .map_err(|error| ExitError::new(EXIT_DEVICE_COMMAND_FAILED, error))?;
-            if config.remove_device(&label) {
+            if config
+                .remove_device(&label)
+                .map_err(|error| ExitError::new(EXIT_INVALID_ARGUMENTS, error))?
+            {
                 config
                     .save()
                     .map_err(|error| ExitError::new(EXIT_DEVICE_COMMAND_FAILED, error))?;
@@ -216,7 +223,7 @@ async fn run_one_shot(
             }
         }
         OneShotCommand::DeviceSave { label } => {
-            validate_device_label(&label)
+            let label = validate_device_label(&label)
                 .map_err(|error| ExitError::new(EXIT_INVALID_ARGUMENTS, error))?;
             let ResolvedTarget {
                 mut config, target, ..
@@ -296,16 +303,17 @@ fn resolve_target(
             if let Some(model) = parse_device_model(value) {
                 return Ok(ScanTarget::Model(model));
             }
+            let label = value.trim();
 
-            let saved = config.devices.get(value).ok_or_else(|| {
+            let saved = config.devices.get(label).ok_or_else(|| {
                 ExitError::new(
                     EXIT_LABEL_NOT_FOUND,
-                    anyhow!("Device label not found: {value}"),
+                    anyhow!("Device label not found: {label}"),
                 )
             })?;
 
             Ok(ScanTarget::Address {
-                label: Some(value.to_string()),
+                label: Some(label.to_string()),
                 address: saved.address.clone(),
                 cached_serial: saved.serial_number.clone(),
             })
@@ -391,8 +399,20 @@ async fn find_matching_peripheral(
                 _ => continue,
             };
 
-            let peripheral = central.peripheral(&addr).await?;
-            let properties = peripheral.properties().await?;
+            let peripheral = match central.peripheral(&addr).await {
+                Ok(peripheral) => peripheral,
+                Err(error) => {
+                    eprintln!("Warning: could not query peripheral {addr}: {error}");
+                    continue;
+                }
+            };
+            let properties = match peripheral.properties().await {
+                Ok(properties) => properties,
+                Err(error) => {
+                    eprintln!("Warning: could not read properties for {addr}: {error}");
+                    continue;
+                }
+            };
             let discovered = discovered_device(&addr, properties.as_ref());
 
             if target_matches(target, &discovered) {

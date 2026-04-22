@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use iqos::{FlexPuffSetting, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
 use crate::loader::compat::supports_flexpuff;
-use crate::loader::parser::IQOSConsole;
+use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
     console.register_command(
@@ -61,13 +61,15 @@ fn parse_action(args: &[String]) -> Result<FlexPuffAction> {
     match args.get(1).map(String::as_str) {
         None if args.len() == 1 => Ok(FlexPuffAction::Status),
         Some("enable") if args.len() == 2 => Ok(FlexPuffAction::Enable),
-        Some("enable") => bail!("Usage: flexpuff enable"),
+        Some("enable") => Err(invalid_arguments("Usage: flexpuff enable")),
         Some("disable") if args.len() == 2 => Ok(FlexPuffAction::Disable),
-        Some("disable") => bail!("Usage: flexpuff disable"),
+        Some("disable") => Err(invalid_arguments("Usage: flexpuff disable")),
         Some("status") if args.len() == 2 => Ok(FlexPuffAction::Status),
-        Some("status") => bail!("Usage: flexpuff status"),
-        Some(opt) => bail!("Invalid option: {opt}. Use enable/disable/status"),
-        None => bail!("Usage: flexpuff [enable|disable|status]"),
+        Some("status") => Err(invalid_arguments("Usage: flexpuff status")),
+        Some(opt) => Err(invalid_arguments(format!(
+            "Invalid option: {opt}. Use enable/disable/status"
+        ))),
+        None => Err(invalid_arguments("Usage: flexpuff [enable|disable|status]")),
     }
 }
 

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use iqos::{Iqos, IqosBle};
 use tokio::sync::Mutex;
 
 use crate::loader::compat::supports_smartgesture;
-use crate::loader::parser::IQOSConsole;
+use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
     console.register_command(
@@ -47,11 +47,13 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
 fn parse_action(args: &[String]) -> Result<SmartGestureAction> {
     match args.get(1).map(String::as_str) {
         Some("enable") if args.len() == 2 => Ok(SmartGestureAction::Enable),
-        Some("enable") => bail!("Usage: smartgesture enable"),
+        Some("enable") => Err(invalid_arguments("Usage: smartgesture enable")),
         Some("disable") if args.len() == 2 => Ok(SmartGestureAction::Disable),
-        Some("disable") => bail!("Usage: smartgesture disable"),
-        Some(opt) => bail!("Invalid option: {opt}. Use enable/disable"),
-        None => bail!("Usage: smartgesture [enable|disable]"),
+        Some("disable") => Err(invalid_arguments("Usage: smartgesture disable")),
+        Some(opt) => Err(invalid_arguments(format!(
+            "Invalid option: {opt}. Use enable/disable"
+        ))),
+        None => Err(invalid_arguments("Usage: smartgesture [enable|disable]")),
     }
 }
 

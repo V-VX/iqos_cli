@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use iqos::{FlexBatteryMode, FlexBatterySettings, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
 use crate::loader::compat::supports_flexbattery;
-use crate::loader::parser::IQOSConsole;
+use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
     console.register_command(
@@ -36,7 +36,7 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         }
         Some("pause") => {
             if args.len() != 3 {
-                bail!("Usage: flexbattery pause [on|off]");
+                return Err(invalid_arguments("Usage: flexbattery pause [on|off]"));
             }
             let value = args.get(2).map(|s| s.to_ascii_lowercase());
             let pause = parse_on_off(value.as_deref())?;
@@ -45,17 +45,21 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
         }
         Some("performance") => {
             if args.len() != 2 {
-                bail!("Usage: flexbattery performance");
+                return Err(invalid_arguments("Usage: flexbattery performance"));
             }
             FlexBatterySettings::new(FlexBatteryMode::Performance, None)
         }
         Some("eco") => {
             if args.len() != 2 {
-                bail!("Usage: flexbattery eco");
+                return Err(invalid_arguments("Usage: flexbattery eco"));
             }
             FlexBatterySettings::new(FlexBatteryMode::Eco, None)
         }
-        Some(s) => bail!("Invalid option: {s}. Use performance/eco/pause [on|off]"),
+        Some(s) => {
+            return Err(invalid_arguments(format!(
+                "Invalid option: {s}. Use performance/eco/pause [on|off]"
+            )));
+        }
     };
 
     iqos.set_flexbattery(model, settings).await?;
@@ -68,7 +72,9 @@ fn parse_on_off(value: Option<&str>) -> Result<Option<bool>> {
         Some("on") => Ok(Some(true)),
         Some("off") => Ok(Some(false)),
         None => Ok(None),
-        Some(s) => bail!("Invalid pause value: {s}. Use on/off"),
+        Some(s) => Err(invalid_arguments(format!(
+            "Invalid pause value: {s}. Use on/off"
+        ))),
     }
 }
 

@@ -70,26 +70,40 @@ impl AppConfig {
         }
 
         let contents = toml::to_string_pretty(self)?;
-        let mut options = OpenOptions::new();
-        options.write(true).create(true).truncate(true);
+        let tmp_path = path.with_extension("toml.tmp");
 
-        #[cfg(unix)]
-        {
-            options.mode(0o600);
+        let result = (|| -> Result<()> {
+            let mut options = OpenOptions::new();
+            options.write(true).create(true).truncate(true);
+
+            #[cfg(unix)]
+            {
+                options.mode(0o600);
+            }
+
+            let mut file = options
+                .open(&tmp_path)
+                .with_context(|| format!("failed to write {}", tmp_path.display()))?;
+
+            #[cfg(unix)]
+            file.set_permissions(fs::Permissions::from_mode(0o600))
+                .with_context(|| format!("failed to set permissions on {}", tmp_path.display()))?;
+
+            file.write_all(contents.as_bytes())
+                .with_context(|| format!("failed to write {}", tmp_path.display()))?;
+            file.sync_all()
+                .with_context(|| format!("failed to sync {}", tmp_path.display()))?;
+            drop(file);
+
+            fs::rename(&tmp_path, &path)
+                .with_context(|| format!("failed to replace {}", path.display()))
+        })();
+
+        if result.is_err() {
+            let _ = fs::remove_file(&tmp_path);
         }
 
-        let mut file = options
-            .open(&path)
-            .with_context(|| format!("failed to write {}", path.display()))?;
-
-        #[cfg(unix)]
-        file.set_permissions(fs::Permissions::from_mode(0o600))
-            .with_context(|| format!("failed to set permissions on {}", path.display()))?;
-
-        file.write_all(contents.as_bytes())
-            .with_context(|| format!("failed to write {}", path.display()))?;
-        file.flush()
-            .with_context(|| format!("failed to write {}", path.display()))
+        result
     }
 
     pub fn update_default(&mut self, device: &ConnectedDevice) {
@@ -99,7 +113,7 @@ impl AppConfig {
     }
 
     pub fn save_device(&mut self, label: String, device: &ConnectedDevice) -> Result<()> {
-        validate_device_label(&label)?;
+        let label = validate_device_label(&label)?;
 
         self.devices.insert(
             label,
@@ -115,6 +129,7 @@ impl AppConfig {
     }
 
     pub fn update_saved_device_metadata(&mut self, label: &str, device: &ConnectedDevice) {
+        let label = label.trim();
         if let Some(saved) = self.devices.get_mut(label) {
             saved.local_name = device
                 .local_name
@@ -128,21 +143,29 @@ impl AppConfig {
         }
     }
 
-    pub fn remove_device(&mut self, label: &str) -> bool {
-        self.devices.remove(label).is_some()
+    pub fn remove_device(&mut self, label: &str) -> Result<bool> {
+        let label = normalize_device_label(label)?;
+        Ok(self.devices.remove(&label).is_some())
     }
 }
 
-pub fn validate_device_label(label: &str) -> Result<()> {
-    if label.trim().is_empty() {
+pub fn validate_device_label(label: &str) -> Result<String> {
+    let trimmed = normalize_device_label(label)?;
+
+    if is_reserved_model_label(&trimmed) {
+        bail!("Invalid label: {trimmed} is reserved for model selection");
+    }
+
+    Ok(trimmed)
+}
+
+pub fn normalize_device_label(label: &str) -> Result<String> {
+    let trimmed = label.trim();
+    if trimmed.is_empty() {
         bail!("Invalid label: label must not be empty");
     }
 
-    if is_reserved_model_label(label) {
-        bail!("Invalid label: {label} is reserved for model selection");
-    }
-
-    Ok(())
+    Ok(trimmed.to_string())
 }
 
 pub fn config_file() -> PathBuf {
@@ -241,6 +264,41 @@ mod tests {
     }
 
     #[test]
+    fn trims_label_before_saving() {
+        let mut config = AppConfig::default();
+        let device = ConnectedDevice {
+            address: "AA:BB:CC:DD:EE:FF".to_string(),
+            local_name: Some("IQOS ILUMA i".to_string()),
+            model: DeviceModel::IlumaI,
+            serial_number: Some("SN123".to_string()),
+        };
+
+        config
+            .save_device("  blackcat  ".to_string(), &device)
+            .unwrap();
+
+        assert!(config.devices.contains_key("blackcat"));
+        assert!(!config.devices.contains_key("  blackcat  "));
+    }
+
+    #[test]
+    fn removes_device_with_trimmed_label() {
+        let mut config = AppConfig::default();
+        config.devices.insert(
+            "blackcat".to_string(),
+            SavedDevice {
+                address: "AA:BB:CC:DD:EE:FF".to_string(),
+                local_name: None,
+                model: None,
+                serial_number: None,
+            },
+        );
+
+        assert!(config.remove_device("  blackcat  ").unwrap());
+        assert!(config.devices.is_empty());
+    }
+
+    #[test]
     fn rejects_label_that_matches_model_selector() {
         let mut config = AppConfig::default();
         let device = ConnectedDevice {
@@ -302,6 +360,7 @@ mod tests {
 
         let mode = fs::metadata(&path).unwrap().permissions().mode() & 0o777;
         assert_eq!(mode, 0o600);
+        assert!(!path.with_extension("toml.tmp").exists());
 
         fs::remove_dir_all(temp).unwrap();
     }

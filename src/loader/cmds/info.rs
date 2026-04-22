@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use iqos::{DeviceStatus, Iqos, IqosBle};
 use tokio::sync::Mutex;
 
-use crate::loader::parser::IQOSConsole;
+use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
     console.register_command(
@@ -15,7 +15,7 @@ pub fn register_command(console: &mut IQOSConsole) {
 
 async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
     if args.len() != 1 {
-        bail!("Usage: info");
+        return Err(invalid_arguments("Usage: info"));
     }
 
     let iqos = iqos.lock().await;

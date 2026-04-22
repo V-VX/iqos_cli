@@ -35,13 +35,22 @@ impl CommandError {
     }
 
     fn classify(error: anyhow::Error) -> Self {
-        let message = error.to_string();
-        if is_invalid_argument_message(&message) {
-            Self::InvalidArguments(message)
-        } else {
-            Self::DeviceFailure(message)
+        match error.downcast::<CommandError>() {
+            Ok(command_error) => command_error,
+            Err(error) => {
+                let message = error.to_string();
+                if is_invalid_argument_message(&message) {
+                    return Self::InvalidArguments(message);
+                }
+
+                Self::DeviceFailure(message)
+            }
         }
     }
+}
+
+pub fn invalid_arguments(message: impl Into<String>) -> anyhow::Error {
+    CommandError::invalid_arguments(message).into()
 }
 
 pub fn is_invalid_argument_message(message: &str) -> bool {

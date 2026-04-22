@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
+use anyhow::Result;
 use iqos::{Iqos, IqosBle, VibrationSettings};
 use tokio::sync::Mutex;
 
-use crate::loader::parser::IQOSConsole;
+use crate::loader::parser::{invalid_arguments, IQOSConsole};
 
 pub fn register_command(console: &mut IQOSConsole) {
     console.register_command(
@@ -36,24 +36,25 @@ async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<(
 fn validate_flags(args: &[&str], has_charge: bool) -> Result<()> {
     const VALID: &[&str] = &["heating", "starting", "puffend", "terminated", "charge"];
     if !args.len().is_multiple_of(2) {
-        bail!("Each flag requires a value. Usage: vibration [heating|starting|puffend|terminated|charge] [on|off] ...");
+        return Err(invalid_arguments("Each flag requires a value. Usage: vibration [heating|starting|puffend|terminated|charge] [on|off] ..."));
     }
     for chunk in args.chunks(2) {
         if !VALID.contains(&chunk[0]) {
-            bail!(
+            return Err(invalid_arguments(format!(
                 "Unknown flag '{}'. Valid: heating, starting, puffend, terminated, charge",
                 chunk[0]
-            );
+            )));
         }
         if chunk[0] == "charge" && !has_charge {
-            bail!("'charge' flag is not supported on this device");
+            return Err(invalid_arguments(
+                "'charge' flag is not supported on this device",
+            ));
         }
         if chunk[1] != "on" && chunk[1] != "off" {
-            bail!(
+            return Err(invalid_arguments(format!(
                 "Invalid value '{}' for '{}'. Use on or off",
-                chunk[1],
-                chunk[0]
-            );
+                chunk[1], chunk[0]
+            )));
         }
     }
     Ok(())

@@ -1,17 +1,22 @@
 use anyhow::{bail, Result};
 
-use crate::config::{print_saved_devices, validate_device_label, AppConfig, ConnectedDevice};
+use crate::config::{
+    normalize_device_label, print_saved_devices, validate_device_label, AppConfig, ConnectedDevice,
+};
+use crate::loader::parser::invalid_arguments;
 
 pub async fn execute(args: Vec<String>, connected_device: Option<&ConnectedDevice>) -> Result<()> {
     match args.get(1).map(String::as_str) {
         Some("list") if args.len() == 2 => list_devices(),
-        Some("list") => bail!("Usage: device list"),
+        Some("list") => Err(invalid_arguments("Usage: device list")),
         Some("save") if args.len() == 3 => save_device(&args[2], connected_device),
-        Some("save") => bail!("Usage: device save <label>"),
+        Some("save") => Err(invalid_arguments("Usage: device save <label>")),
         Some("remove") if args.len() == 3 => remove_device(&args[2]),
-        Some("remove") => bail!("Usage: device remove <label>"),
-        Some(subcommand) => bail!("Invalid option: {subcommand}. Use list/save/remove"),
-        None => bail!("Usage: device [list|save|remove]"),
+        Some("remove") => Err(invalid_arguments("Usage: device remove <label>")),
+        Some(subcommand) => Err(invalid_arguments(format!(
+            "Invalid option: {subcommand}. Use list/save/remove"
+        ))),
+        None => Err(invalid_arguments("Usage: device [list|save|remove]")),
     }
 }
 
@@ -27,8 +32,9 @@ fn save_device(label: &str, connected_device: Option<&ConnectedDevice>) -> Resul
     };
 
     let mut config = AppConfig::load()?;
-    validate_device_label(label)?;
-    config.save_device(label.to_string(), device)?;
+    let label =
+        validate_device_label(label).map_err(|error| invalid_arguments(error.to_string()))?;
+    config.save_device(label.clone(), device)?;
     config.update_default(device);
     config.save()?;
     println!("Saved device label: {label}");
@@ -37,7 +43,9 @@ fn save_device(label: &str, connected_device: Option<&ConnectedDevice>) -> Resul
 
 fn remove_device(label: &str) -> Result<()> {
     let mut config = AppConfig::load()?;
-    if !config.remove_device(label) {
+    let label =
+        normalize_device_label(label).map_err(|error| invalid_arguments(error.to_string()))?;
+    if !config.remove_device(&label)? {
         bail!("Device label not found: {label}");
     }
 
