@@ -132,8 +132,13 @@ async fn run_cli(mut args: Vec<String>) -> i32 {
     };
 
     let Some(command) = cli.command else {
-        eprintln!("Error: command is required in one-shot mode");
-        return EXIT_INVALID_ARGUMENTS;
+        return match run_auto_connected_console(cli.model, scan_timeout(cli.timeout)).await {
+            Ok(()) => 0,
+            Err(error) => {
+                eprintln!("Error: {:#}", error.error);
+                error.code
+            }
+        };
     };
 
     match run_one_shot(
@@ -149,6 +154,25 @@ async fn run_cli(mut args: Vec<String>) -> i32 {
             error.code
         }
     }
+}
+
+async fn run_auto_connected_console(
+    model_arg: Option<String>,
+    timeout: Duration,
+) -> std::result::Result<(), ExitError> {
+    let mut config =
+        AppConfig::load().map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
+    let target = resolve_target(model_arg.as_deref(), &config)?;
+    let (iqos, device) = connect_target(&target, timeout).await?;
+
+    apply_connection_memory(&mut config, &target, &device);
+    if let Err(error) = config.save() {
+        eprintln!("Warning: could not save device config: {error:#}");
+    }
+
+    run_console_with_device(Iqos::new(iqos), device)
+        .await
+        .map_err(|error| ExitError::new(EXIT_DEVICE_COMMAND_FAILED, error))
 }
 
 async fn run_one_shot(

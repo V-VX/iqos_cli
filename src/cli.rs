@@ -403,6 +403,15 @@ mod tests {
         assert_eq!(error.exit_code(), 0);
     }
 
+    #[test]
+    fn parses_global_options_without_subcommand() {
+        let cli = Cli::try_parse_from(["iqos", "--model", "minera", "--timeout", "4"]).unwrap();
+
+        assert_eq!(cli.model.as_deref(), Some("minera"));
+        assert_eq!(cli.timeout, Some(4));
+        assert!(cli.command.is_none());
+    }
+
     fn strings(values: impl IntoIterator<Item = &'static str>) -> Vec<String> {
         values.into_iter().map(str::to_string).collect()
     }
