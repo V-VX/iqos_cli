@@ -195,7 +195,7 @@ select_asset() {
         asset=$(archive_name "$tag" "$package")
         url=$(asset_url_from_release "$release_json" "$asset")
         if [ -n "$url" ]; then
-            printf '%s %s %s\n' "$package" "$asset" "$url"
+            printf '%s\n%s\n%s\n' "$package" "$asset" "$url"
             return
         fi
     done
@@ -311,10 +311,12 @@ main() {
     fi
 
     selected=$(select_asset "$release_json" "$tag")
-    set -- $selected
-    package=$1
-    asset=$2
-    asset_url=$3
+    package=$(printf '%s\n' "$selected" | sed -n '1p')
+    asset=$(printf '%s\n' "$selected" | sed -n '2p')
+    asset_url=$(printf '%s\n' "$selected" | sed -n '3p')
+    if [ -z "$package" ] || [ -z "$asset" ] || [ -z "$asset_url" ]; then
+        die "Could not parse the selected release asset."
+    fi
 
     TMP_DIR=$(mktemp -d)
     trap cleanup EXIT HUP INT TERM
@@ -330,16 +332,23 @@ main() {
     verify_checksum "$release_json" "$asset" "$archive_path" "$TMP_DIR"
 
     info "Extracting package..."
-    tar -xzf "$archive_path" -C "$TMP_DIR"
-
-    binary_path="${TMP_DIR}/iqos_cli-${tag}-${package}/iqos"
-    if [ ! -f "$binary_path" ]; then
-        binary_path=$(find "$TMP_DIR" -type f -name iqos -print | head -n 1)
+    archive_listing="${TMP_DIR}/archive.list"
+    tar -tzf "$archive_path" > "$archive_listing"
+    if grep -Eq '(^/|(^|/)\.\.(/|$))' "$archive_listing"; then
+        die "The release archive contains unsafe paths."
     fi
 
-    if [ -z "$binary_path" ] || [ ! -f "$binary_path" ]; then
+    expected_member="iqos_cli-${tag}-${package}/iqos"
+    if grep -Fx "$expected_member" "$archive_listing" >/dev/null; then
+        binary_member="$expected_member"
+    elif grep -Fx "./$expected_member" "$archive_listing" >/dev/null; then
+        binary_member="./$expected_member"
+    else
         die "The release archive did not contain an iqos binary."
     fi
+
+    tar -xzf "$archive_path" -C "$TMP_DIR" "$binary_member"
+    binary_path="${TMP_DIR}/${binary_member#./}"
 
     install_dir=$(choose_install_dir)
     info "Installing iqos to ${install_dir}..."

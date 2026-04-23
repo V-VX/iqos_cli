@@ -107,8 +107,8 @@ The installer detects macOS or Linux, selects the matching release package, veri
 Use these environment variables to customise the install:
 
 ```bash
-IQOS_CLI_VERSION=v1.0.1 sh install.sh
-IQOS_CLI_INSTALL_DIR="$HOME/bin" sh install.sh
+curl -fsSL https://raw.githubusercontent.com/V-VX/iqos_cli/main/install.sh | IQOS_CLI_VERSION=v1.0.1 sh
+curl -fsSL https://raw.githubusercontent.com/V-VX/iqos_cli/main/install.sh | IQOS_CLI_INSTALL_DIR="$HOME/bin" sh
 ```
 
 ### From Source
