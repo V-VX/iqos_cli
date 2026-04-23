@@ -238,7 +238,14 @@ verify_checksum() {
         die "Failed to download SHA256SUMS.txt."
     fi
 
-    expected=$(awk -v name="$asset_name" '$2 == name { print $1; exit }' "$sums_path")
+    expected=$(awk -v name="$asset_name" '
+        {
+            file = $2
+            sub(/^\*/, "", file)
+            sub(/^\.\//, "", file)
+            if (file == name) { print $1; exit }
+        }
+    ' "$sums_path")
     if [ -z "$expected" ]; then
         die "SHA256SUMS.txt does not include $asset_name."
     fi
