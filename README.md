@@ -116,7 +116,7 @@ curl -fsSL https://raw.githubusercontent.com/V-VX/iqos_cli/main/install.sh | IQO
 Requires **Rust 1.92 or later**. [Install Rust](https://rustup.rs/) first.
 
 ```bash
-git clone https://github.com/v-vx/iqos_cli.git
+git clone https://github.com/V-VX/iqos_cli.git
 cd iqos_cli
 cargo build --release
 ./target/release/iqos_cli

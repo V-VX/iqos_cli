@@ -62,6 +62,17 @@ asset_url_from_release() {
     release_json=$1
     asset_name=$2
 
+    if has_cmd jq; then
+        url=$(printf '%s' "$release_json" |
+            jq -r --arg name "$asset_name" '
+                .assets[] | select(.name == $name) | .browser_download_url
+            ' 2>/dev/null | head -n 1)
+        if [ -n "$url" ]; then
+            printf '%s\n' "$url"
+            return
+        fi
+    fi
+
     printf '%s' "$release_json" |
         tr ',' '\n' |
         awk -v name="$asset_name" '
@@ -326,7 +337,7 @@ main() {
     fi
 
     TMP_DIR=$(mktemp -d)
-    trap cleanup EXIT HUP INT TERM
+    trap cleanup 0 HUP INT TERM
 
     archive_path="${TMP_DIR}/${asset}"
 
