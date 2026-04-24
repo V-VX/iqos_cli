@@ -136,7 +136,7 @@ detect_linux_libc() {
         esac
     fi
 
-    if ls /lib/ld-musl-*.so.1 /usr/lib/ld-musl-*.so.1 >/dev/null 2>&1; then
+    if ls /lib/ld-musl-*.so.1 >/dev/null 2>&1 || ls /usr/lib/ld-musl-*.so.1 >/dev/null 2>&1; then
         printf '%s\n' "musl"
         return
     fi
