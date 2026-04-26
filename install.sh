@@ -197,6 +197,17 @@ archive_name() {
     esac
 }
 
+validate_path_component() {
+    name=$1
+    value=$2
+
+    case "$value" in
+        "" | *[!A-Za-z0-9._+-]*)
+            die "Invalid ${name}: ${value}"
+            ;;
+    esac
+}
+
 select_asset() {
     release_json=$1
     tag=$2
@@ -287,12 +298,15 @@ install_binary() {
     source_path=$1
     install_dir=$2
     target_path="${install_dir}/iqos"
+    tmp_target="${target_path}.tmp.$$"
 
     if mkdir -p "$install_dir" 2>/dev/null &&
-        cp "$source_path" "$target_path" 2>/dev/null &&
-        chmod 0755 "$target_path" 2>/dev/null; then
+        cp "$source_path" "$tmp_target" 2>/dev/null &&
+        chmod 0755 "$tmp_target" 2>/dev/null &&
+        mv -f "$tmp_target" "$target_path" 2>/dev/null; then
         return
     fi
+    rm -f "$tmp_target" 2>/dev/null || true
 
     if ! has_cmd sudo; then
         die "Cannot write to $install_dir and sudo is not available. Set IQOS_CLI_INSTALL_DIR to a writable directory."
@@ -300,8 +314,9 @@ install_binary() {
 
     info "Installing with sudo to $install_dir."
     sudo mkdir -p "$install_dir"
-    sudo cp "$source_path" "$target_path"
-    sudo chmod 0755 "$target_path"
+    sudo cp "$source_path" "$tmp_target"
+    sudo chmod 0755 "$tmp_target"
+    sudo mv -f "$tmp_target" "$target_path"
 }
 
 cleanup() {
@@ -335,9 +350,14 @@ main() {
     if [ -z "$package" ] || [ -z "$asset" ] || [ -z "$asset_url" ]; then
         die "Could not parse the selected release asset."
     fi
+    validate_path_component "release tag" "$tag"
+    validate_path_component "package target" "$package"
 
     TMP_DIR=$(mktemp -d)
-    trap cleanup 0 HUP INT TERM
+    trap cleanup 0
+    trap 'cleanup; exit 129' HUP
+    trap 'cleanup; exit 130' INT
+    trap 'cleanup; exit 143' TERM
 
     archive_path="${TMP_DIR}/${asset}"
 
@@ -367,6 +387,9 @@ main() {
 
     tar -xzf "$archive_path" -C "$TMP_DIR" "$binary_member"
     binary_path="${TMP_DIR}/${binary_member#./}"
+    if [ -L "$binary_path" ] || [ ! -f "$binary_path" ]; then
+        die "The release archive did not contain a regular iqos binary."
+    fi
 
     install_dir=$(choose_install_dir)
     info "Installing iqos to ${install_dir}..."
