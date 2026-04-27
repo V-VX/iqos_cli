@@ -76,7 +76,6 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 
 ## Prerequisites
 
-- **Rust 1.92 or later** — [Install Rust](https://rustup.rs/)
 - **Bluetooth adapter** — A working Bluetooth adapter on your system
 - **Platform-specific dependencies**:
 
@@ -89,16 +88,43 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 
 ## Installation
 
-### From Source
+### Installer Script (Linux/macOS)
+
+Install the latest GitHub Release without a local Rust toolchain:
 
 ```bash
-git clone https://github.com/v-vx/iqos_cli.git
+curl -fsSL https://raw.githubusercontent.com/V-VX/iqos_cli/main/install.sh | sh
+```
+
+If `curl` is unavailable, `wget` also works:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/V-VX/iqos_cli/main/install.sh | sh
+```
+
+The installer detects macOS or Linux, selects the matching release package, verifies `SHA256SUMS.txt` when available, and installs the executable as `iqos`. By default it installs to `~/.local/bin` when possible and falls back to `/usr/local/bin` with `sudo` when needed.
+
+Use these environment variables to customise the install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/V-VX/iqos_cli/main/install.sh | IQOS_CLI_VERSION=v1.0.1 sh
+curl -fsSL https://raw.githubusercontent.com/V-VX/iqos_cli/main/install.sh | IQOS_CLI_INSTALL_DIR="$HOME/bin" sh
+```
+
+### From Source
+
+Requires **Rust 1.92 or later**. [Install Rust](https://rustup.rs/) first.
+
+```bash
+git clone https://github.com/V-VX/iqos_cli.git
 cd iqos_cli
 cargo build --release
 ./target/release/iqos_cli
 ```
 
 ### Via Cargo
+
+Requires **Rust 1.92 or later**.
 
 ```bash
 cargo install --path .
