@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**A command-line interface for controlling IQOS devices via Bluetooth Low Energy, built on [V-VX/iqos](https://github.com/V-VX/iqos)**
+**A command-line interface for controlling IQOS devices over Bluetooth Low Energy or USB, built on [V-VX/iqos](https://github.com/V-VX/iqos)**
 
 [![Rust](https://img.shields.io/badge/rust-1.92%2B-orange.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square)](LICENSE)
@@ -32,15 +32,16 @@
 
 ## Overview
 
-IQOS CLI is a Rust-based command-line tool for controlling IQOS devices over Bluetooth Low Energy, built on top of [V-VX/iqos](https://github.com/V-VX/iqos). It supports both an interactive REPL and one-shot command execution, so you can either connect once and work from the `iqos>` prompt or run a single command directly from your shell.
+IQOS CLI is a Rust-based command-line tool for controlling IQOS devices over Bluetooth Low Energy or USB, built on top of [V-VX/iqos](https://github.com/V-VX/iqos). It supports both an interactive REPL and one-shot command execution, so you can either connect once and work from the `iqos>` prompt or run a single command directly from your shell.
 
 ## Architecture
 
-All device protocol logic — BLE framing, capability negotiation, command encoding, response parsing — lives in the [iqos crate (V-VX/iqos)](https://github.com/V-VX/iqos). This repository is a thin CLI layer: it handles device discovery, user interaction, and argument parsing, then delegates every device operation to the crate's high-level API.
+All device protocol logic — BLE/USB framing, capability negotiation, command encoding, and response parsing — lives in the [iqos crate (V-VX/iqos)](https://github.com/V-VX/iqos). This repository is a thin CLI layer: it handles device discovery, user interaction, and argument parsing, then delegates every device operation to the crate's high-level API.
 
 ## Features
 
 - **Automatic Device Discovery** — Scans and connects to IQOS devices via Bluetooth
+- **Direct USB Connection** — Select the attached IQOS with `--usb` without BLE scanning
 - **Interactive Console** — REPL with command history (`iqos>` prompt)
 - **One-Shot CLI Commands** — Run device commands directly, for example `iqos --model iluma battery`
 - **Saved Device Labels** — Remember a connected device and target it later with `--model <label>`
@@ -76,7 +77,8 @@ All device protocol logic — BLE framing, capability negotiation, command encod
 
 ## Prerequisites
 
-- **Bluetooth adapter** — A working Bluetooth adapter on your system
+- **BLE use** — A working Bluetooth adapter
+- **USB use** — Access to an attached IQOS USB device (Linux may require a udev rule or `sudo`)
 - **Platform-specific dependencies**:
 
   **Linux:**
@@ -172,6 +174,16 @@ iqos brightness high --model iluma
 iqos vibration heating on --model iluma-i --timeout 5
 ```
 
+Use the experimental USB transport instead of scanning over BLE:
+
+```bash
+iqos --usb info
+iqos --usb battery
+iqos --usb diagnosis
+```
+
+These commands, plus read-only brightness, vibration, FlexPuff, FlexBattery, and AutoStart queries, have been validated on an IQOS ILUMA i and compared with BLE results from the same device. The shared library validates both ordinary SCP CRC-8 frames and the CRC-16 format used by diagnosis telemetry. Stateful USB commands are not yet hardware-validated.
+
 `--model` accepts either a built-in model selector or a saved device label. Global options can be placed before the command, after the command, or between command arguments; the CLI normalizes them before execution.
 
 If you pass only a target option and no subcommand, IQOS CLI connects to that target and then starts interactive mode:
@@ -195,6 +207,7 @@ This is useful after saving a device label, because it skips the manual "Connect
 | `iqos --model <model-or-label>` | Connect to a built-in model selector or saved label, then open interactive mode |
 | `iqos --model <model-or-label> <command>` | Connect to the selected target and run one command |
 | `iqos <command> --model <model-or-label>` | Same as above; global options may be placed after the command |
+| `iqos --usb [command]` | Connect to the attached IQOS over USB, optionally run one command |
 | `iqos --timeout <secs> ...` | Override the BLE scan timeout |
 
 Built-in model selectors include `iluma`, `iluma-one`, `iluma-prime`, `iluma-i`, `iluma-i-one`, and `iluma-i-prime`. Saved labels are managed with the `device` command.
@@ -336,6 +349,8 @@ sudo usermod -a -G bluetooth $USER
 # Log out and log back in
 ```
 
+For USB, run the command once with `sudo` to confirm that permissions are the issue, then add a udev rule for vendor/product `2759:0003` rather than routinely running the CLI as root.
+
 ### Command Not Available
 
 - Check the compatibility table — some features are model-specific
@@ -348,7 +363,7 @@ sudo usermod -a -G bluetooth $USER
 ```
 iqos_cli/
 ├── src/
-│   ├── main.rs              # Entry point and BLE device discovery
+│   ├── main.rs              # Entry point and BLE/USB connection setup
 │   └── loader/              # CLI interface
 │       ├── mod.rs           # Console runner (run_console)
 │       ├── parser.rs        # IQOSConsole REPL and command dispatch
@@ -417,7 +432,7 @@ GNU General Public License v3.0 — see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-Built with [btleplug](https://github.com/deviceplug/btleplug) for Bluetooth Low Energy support.
+Built with [btleplug](https://github.com/deviceplug/btleplug) for Bluetooth Low Energy and [nusb](https://github.com/kevinmehall/nusb) for USB support.
 
 ---
 
