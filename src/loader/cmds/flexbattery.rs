@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{DeviceCapability, FlexBatteryMode, FlexBatterySettings, Iqos, IqosBle};
+use iqos::{DeviceCapability, FlexBatteryMode, FlexBatterySettings, Iqos, IqosTransport};
 use tokio::sync::Mutex;
 
 use crate::loader::parser::{invalid_arguments, IQOSConsole};
@@ -13,7 +13,7 @@ pub fn register_command(console: &mut IQOSConsole) {
     );
 }
 
-async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
+async fn execute(iqos: Arc<Mutex<Iqos<IqosTransport>>>, args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
     let model = iqos.transport().model();
 

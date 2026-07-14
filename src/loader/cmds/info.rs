@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{DeviceStatus, Iqos, IqosBle};
+use iqos::{DeviceStatus, Iqos, IqosTransport};
 use tokio::sync::Mutex;
 
 use crate::loader::parser::{invalid_arguments, IQOSConsole};
@@ -13,7 +13,7 @@ pub fn register_command(console: &mut IQOSConsole) {
     );
 }
 
-async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
+async fn execute(iqos: Arc<Mutex<Iqos<IqosTransport>>>, args: Vec<String>) -> Result<()> {
     if args.len() != 1 {
         return Err(invalid_arguments("Usage: info"));
     }
@@ -65,7 +65,7 @@ fn print_status(status: &DeviceStatus) {
 }
 
 fn field_or_missing(value: Option<&str>) -> &str {
-    value.unwrap_or("N/A")
+    value.map_or("N/A", |field| field.trim_end_matches('\0'))
 }
 
 #[cfg(test)]
@@ -80,5 +80,10 @@ mod tests {
     #[test]
     fn present_field_is_preserved() {
         assert_eq!(field_or_missing(Some("value")), "value");
+    }
+
+    #[test]
+    fn trailing_gatt_nul_is_not_printed() {
+        assert_eq!(field_or_missing(Some("value\0")), "value");
     }
 }

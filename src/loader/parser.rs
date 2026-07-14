@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{Iqos, IqosBle};
+use iqos::{Iqos, IqosTransport};
 use rustyline::error::ReadlineError;
 use rustyline::{Config, Editor};
 use tokio::sync::Mutex;
@@ -63,17 +63,17 @@ pub fn is_invalid_argument_message(message: &str) -> bool {
 
 pub struct IQOSConsole {
     commands: CommandRegistry,
-    iqos: Arc<Mutex<Iqos<IqosBle>>>,
+    iqos: Arc<Mutex<Iqos<IqosTransport>>>,
     connected_device: Option<ConnectedDevice>,
 }
 
 impl IQOSConsole {
-    pub fn new(iqos: Iqos<IqosBle>) -> Self {
+    pub fn new(iqos: Iqos<IqosTransport>) -> Self {
         Self::with_connected_device(iqos, None)
     }
 
     pub fn with_connected_device(
-        iqos: Iqos<IqosBle>,
+        iqos: Iqos<IqosTransport>,
         connected_device: Option<ConnectedDevice>,
     ) -> Self {
         Self {
@@ -151,20 +151,23 @@ impl IQOSConsole {
 }
 
 #[allow(dead_code)]
-pub async fn run_console(iqos: Iqos<IqosBle>) -> Result<()> {
+pub async fn run_console(iqos: Iqos<IqosTransport>) -> Result<()> {
     let mut console = IQOSConsole::new(iqos);
     register_all_commands(&mut console);
     console.run().await
 }
 
-pub async fn run_console_with_device(iqos: Iqos<IqosBle>, device: ConnectedDevice) -> Result<()> {
+pub async fn run_console_with_device(
+    iqos: Iqos<IqosTransport>,
+    device: ConnectedDevice,
+) -> Result<()> {
     let mut console = IQOSConsole::with_connected_device(iqos, Some(device));
     register_all_commands(&mut console);
     console.run().await
 }
 
 pub async fn run_registered_command(
-    iqos: Iqos<IqosBle>,
+    iqos: Iqos<IqosTransport>,
     command: &str,
     args: Vec<String>,
 ) -> Result<()> {

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{Iqos, IqosBle};
+use iqos::{Iqos, IqosTransport};
 use tokio::sync::Mutex;
 
 use crate::cli::print_version;
@@ -14,7 +14,7 @@ pub fn register_command(console: &mut IQOSConsole) {
     );
 }
 
-async fn execute(_iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
+async fn execute(_iqos: Arc<Mutex<Iqos<IqosTransport>>>, args: Vec<String>) -> Result<()> {
     if args.len() != 1 {
         return Err(invalid_arguments("Usage: version"));
     }
