@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{Iqos, IqosBle};
+use iqos::{Iqos, IqosTransport};
 use rustyline::DefaultEditor;
 use tokio::sync::Mutex;
 
@@ -14,7 +14,7 @@ pub fn register_command(console: &mut IQOSConsole) {
     );
 }
 
-async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>) -> Result<()> {
+async fn execute(iqos: Arc<Mutex<Iqos<IqosTransport>>>) -> Result<()> {
     println!("Starting Find My IQOS...");
 
     {

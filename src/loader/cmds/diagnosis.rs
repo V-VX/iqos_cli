@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{Iqos, IqosBle};
+use iqos::{Iqos, IqosTransport};
 use tokio::sync::Mutex;
 
 use crate::loader::parser::IQOSConsole;
@@ -13,7 +13,7 @@ pub fn register_command(console: &mut IQOSConsole) {
     );
 }
 
-async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, _args: Vec<String>) -> Result<()> {
+async fn execute(iqos: Arc<Mutex<Iqos<IqosTransport>>>, _args: Vec<String>) -> Result<()> {
     let iqos = iqos.lock().await;
     let data = iqos.read_diagnosis().await?;
     println!("Diagnosis:");

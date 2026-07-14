@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use iqos::{DeviceCapability, FlexPuffSetting, Iqos, IqosBle};
+use iqos::{DeviceCapability, FlexPuffSetting, Iqos, IqosTransport};
 use tokio::sync::Mutex;
 
 use crate::loader::parser::{invalid_arguments, IQOSConsole};
@@ -20,7 +20,7 @@ enum FlexPuffAction {
     Status,
 }
 
-async fn execute(iqos: Arc<Mutex<Iqos<IqosBle>>>, args: Vec<String>) -> Result<()> {
+async fn execute(iqos: Arc<Mutex<Iqos<IqosTransport>>>, args: Vec<String>) -> Result<()> {
     let action = parse_action(&args)?;
     let iqos = iqos.lock().await;
     let model = iqos.transport().model();

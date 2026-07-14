@@ -10,7 +10,7 @@ use btleplug::platform::{Adapter, Manager, Peripheral, PeripheralId};
 use clap::Parser;
 use colored::Colorize;
 use futures::stream::StreamExt;
-use iqos::{DeviceModel, Iqos, IqosBle};
+use iqos::{DeviceModel, Iqos, IqosBle, IqosTransport, IqosUsb};
 
 mod cli;
 mod config;
@@ -47,6 +47,7 @@ impl ExitError {
 
 #[derive(Debug, Clone)]
 enum ScanTarget {
+    Usb,
     Model(DeviceModel),
     Address {
         label: Option<String>,
@@ -154,7 +155,8 @@ async fn run_cli(mut args: Vec<String>) -> i32 {
     }
 
     let Some(command) = cli.command else {
-        return match run_auto_connected_console(cli.model, scan_timeout(cli.timeout)).await {
+        return match run_auto_connected_console(cli.model, scan_timeout(cli.timeout), cli.usb).await
+        {
             Ok(()) => 0,
             Err(error) => {
                 eprintln!("Error: {:#}", error.error);
@@ -166,6 +168,7 @@ async fn run_cli(mut args: Vec<String>) -> i32 {
     match run_one_shot(
         cli.model,
         scan_timeout(cli.timeout),
+        cli.usb,
         command.into_one_shot(),
     )
     .await
@@ -181,6 +184,7 @@ async fn run_cli(mut args: Vec<String>) -> i32 {
 async fn run_auto_connected_console(
     model_arg: Option<String>,
     timeout: Duration,
+    use_usb: bool,
 ) -> std::result::Result<(), ExitError> {
     print_ascii_art();
 
@@ -188,8 +192,8 @@ async fn run_auto_connected_console(
         mut config,
         target,
         should_save_memory,
-    } = load_config_and_resolve_target(model_arg.as_deref(), true)?;
-    let (iqos, device) = connect_target(&target, timeout).await?;
+    } = load_config_and_resolve_target(model_arg.as_deref(), true, use_usb)?;
+    let (iqos, device) = connect_target(&target, timeout, use_usb).await?;
 
     apply_connection_memory(&mut config, &target, &device);
     save_connection_memory(&config, &target, should_save_memory, true)?;
@@ -202,6 +206,7 @@ async fn run_auto_connected_console(
 async fn run_one_shot(
     model_arg: Option<String>,
     timeout: Duration,
+    use_usb: bool,
     command: OneShotCommand,
 ) -> std::result::Result<(), ExitError> {
     match command {
@@ -233,12 +238,18 @@ async fn run_one_shot(
             }
         }
         OneShotCommand::DeviceSave { label } => {
+            if use_usb {
+                return Err(ExitError::new(
+                    EXIT_INVALID_ARGUMENTS,
+                    anyhow!("Saving USB devices is not supported yet"),
+                ));
+            }
             let label = validate_device_label(&label)
                 .map_err(|error| ExitError::new(EXIT_INVALID_ARGUMENTS, error))?;
             let ResolvedTarget {
                 mut config, target, ..
-            } = load_config_and_resolve_target(model_arg.as_deref(), false)?;
-            let (iqos, device) = connect_target(&target, timeout).await?;
+            } = load_config_and_resolve_target(model_arg.as_deref(), false, false)?;
+            let (iqos, device) = connect_target(&target, timeout, false).await?;
             apply_connection_memory(&mut config, &target, &device);
             config
                 .save_device(label.clone(), &device)
@@ -255,8 +266,8 @@ async fn run_one_shot(
                 config: mut command_config,
                 target,
                 should_save_memory,
-            } = load_config_and_resolve_target(model_arg.as_deref(), true)?;
-            let (iqos, device) = connect_target(&target, timeout).await?;
+            } = load_config_and_resolve_target(model_arg.as_deref(), true, use_usb)?;
+            let (iqos, device) = connect_target(&target, timeout, use_usb).await?;
             apply_connection_memory(&mut command_config, &target, &device);
             save_connection_memory(&command_config, &target, should_save_memory, true)?;
 
@@ -270,7 +281,26 @@ async fn run_one_shot(
 fn load_config_and_resolve_target(
     model_arg: Option<&str>,
     allow_model_config_failure: bool,
+    use_usb: bool,
 ) -> std::result::Result<ResolvedTarget, ExitError> {
+    if use_usb {
+        let (config, _) = load_memory_config(true)?;
+        let target = match model_arg {
+            Some(value) => ScanTarget::Model(parse_device_model(value).ok_or_else(|| {
+                ExitError::new(
+                    EXIT_INVALID_ARGUMENTS,
+                    anyhow!("USB mode accepts a device model, not a saved BLE label: {value}"),
+                )
+            })?),
+            None => ScanTarget::Usb,
+        };
+        return Ok(ResolvedTarget {
+            config,
+            target,
+            should_save_memory: false,
+        });
+    }
+
     if let Some(value) = model_arg {
         if let Some(model) = parse_device_model(value) {
             let (config, should_save_memory) = load_memory_config(allow_model_config_failure)?;
@@ -368,7 +398,12 @@ fn save_connection_memory(
 async fn connect_target(
     target: &ScanTarget,
     timeout: Duration,
-) -> std::result::Result<(IqosBle, ConnectedDevice), ExitError> {
+    use_usb: bool,
+) -> std::result::Result<(IqosTransport, ConnectedDevice), ExitError> {
+    if use_usb {
+        return connect_usb(target).await;
+    }
+
     let manager = Manager::new()
         .await
         .map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
@@ -381,10 +416,38 @@ async fn connect_target(
     let ble = IqosBle::connect_and_discover(peripheral)
         .await
         .map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
-    let device = connected_device(&ble, discovered);
+    let device = connected_ble_device(&ble, discovered);
     warn_serial_mismatch(target, &device);
 
-    Ok((ble, device))
+    Ok((ble.into(), device))
+}
+
+async fn connect_usb(
+    target: &ScanTarget,
+) -> std::result::Result<(IqosTransport, ConnectedDevice), ExitError> {
+    let usb = IqosUsb::connect()
+        .await
+        .map_err(|error| ExitError::new(EXIT_CONNECTION_FAILED, error))?;
+    let device = ConnectedDevice {
+        address: usb.location().to_string(),
+        local_name: usb.device_info().model_number.clone(),
+        model: usb.model(),
+        serial_number: usb.device_info().serial_number.clone(),
+    };
+
+    if let ScanTarget::Model(expected) = target {
+        if *expected != device.model {
+            return Err(ExitError::new(
+                EXIT_CONNECTION_FAILED,
+                anyhow!(
+                    "Connected USB device is {:?}, requested {expected:?}",
+                    device.model
+                ),
+            ));
+        }
+    }
+
+    Ok((usb.into(), device))
 }
 
 async fn find_matching_peripheral(
@@ -483,9 +546,9 @@ async fn run_interactive() -> Result<()> {
                     if prompt_for_connection(&name, &discovered.address).await? {
                         println!("Connecting...");
                         let ble = IqosBle::connect_and_discover(peripheral).await?;
-                        let device = connected_device(&ble, discovered);
+                        let device = connected_ble_device(&ble, discovered);
                         remember_connected_device(&device);
-                        let iqos = Iqos::new(ble);
+                        let iqos = Iqos::new(IqosTransport::Ble(ble));
                         central.stop_scan().await?;
                         run_console_with_device(iqos, device).await?;
                         return Ok(());
@@ -537,7 +600,7 @@ fn discovered_device(
     }
 }
 
-fn connected_device(ble: &IqosBle, discovered: DiscoveredDevice) -> ConnectedDevice {
+fn connected_ble_device(ble: &IqosBle, discovered: DiscoveredDevice) -> ConnectedDevice {
     ConnectedDevice {
         address: discovered.address,
         local_name: discovered.local_name,
@@ -548,6 +611,7 @@ fn connected_device(ble: &IqosBle, discovered: DiscoveredDevice) -> ConnectedDev
 
 fn target_matches(target: &ScanTarget, discovered: &DiscoveredDevice) -> bool {
     match target {
+        ScanTarget::Usb => false,
         ScanTarget::Model(model) => {
             discovered
                 .local_name
@@ -609,6 +673,7 @@ fn classify_command_error(error: &anyhow::Error) -> i32 {
 
 fn describe_target(target: &ScanTarget) -> String {
     match target {
+        ScanTarget::Usb => "USB IQOS".to_string(),
         ScanTarget::Model(model) => format!("{model:?}"),
         ScanTarget::Address {
             label: Some(label),

@@ -7,7 +7,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Debug, Parser)]
 #[command(
     name = "iqos",
-    about = "Control IQOS devices over BLE",
+    about = "Control IQOS devices over BLE or USB",
     disable_version_flag = true
 )]
 pub struct Cli {
@@ -22,6 +22,10 @@ pub struct Cli {
     /// BLE scan timeout in seconds.
     #[arg(long, value_name = "secs")]
     pub timeout: Option<u64>,
+
+    /// Connect through USB HID instead of scanning over BLE.
+    #[arg(long, action = ArgAction::SetTrue)]
+    pub usb: bool,
 
     #[command(subcommand)]
     pub command: Option<CliCommand>,
@@ -236,6 +240,11 @@ pub fn normalize_global_options(args: Vec<String>) -> Vec<String> {
             continue;
         }
 
+        if arg == "--usb" {
+            global_options.push(arg.clone());
+            continue;
+        }
+
         remaining.push(arg.clone());
     }
 
@@ -330,6 +339,17 @@ mod tests {
         assert_eq!(cli.model.as_deref(), Some("iluma-i"));
         assert_eq!(cli.timeout, Some(2));
         assert!(matches!(cli.command, Some(CliCommand::Battery)));
+    }
+
+    #[test]
+    fn normalizes_usb_after_command() {
+        let args = normalize_global_options(strings(["iqos", "info", "--usb"]));
+
+        assert_eq!(args, strings(["iqos", "--usb", "info"]));
+
+        let cli = Cli::try_parse_from(args).unwrap();
+        assert!(cli.usb);
+        assert!(matches!(cli.command, Some(CliCommand::Info)));
     }
 
     #[test]
